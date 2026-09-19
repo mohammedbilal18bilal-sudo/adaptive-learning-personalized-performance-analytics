@@ -19,6 +19,13 @@ The system provides a backend API for personalized learning and student performa
 - Role-based permissions for Student, Faculty, and Admin users
 - RESTful API endpoints
 
+## My Contribution – Backend Development
+
+- Developed REST APIs using Django REST Framework.
+- Implemented JWT authentication and role-based permissions.
+- Created database models, serializers, and migrations.
+- Tested backend API endpoints.
+
 ## Technologies Used
 
 - Python
