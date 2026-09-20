@@ -7,6 +7,7 @@ from core.models import (
     UserProfile,
     Assessment,
     Question,
+    AssessmentAttempt,
 )
 
 
@@ -97,6 +98,16 @@ class Command(BaseCommand):
                 "completed": True,
                 "score": 85,
                 "attempts": 1,
+            },
+        )
+
+        # Create original assessment attempt
+        AssessmentAttempt.objects.get_or_create(
+            student=student,
+            assessment=assessment,
+            defaults={
+                "score": 85,
+                "percentage": 85,
             },
         )
 
