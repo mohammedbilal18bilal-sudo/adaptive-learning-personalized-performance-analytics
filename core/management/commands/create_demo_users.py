@@ -1,3 +1,4 @@
+import os
 from django.core.management.base import BaseCommand
 from django.contrib.auth.models import User
 from core.models import UserProfile
@@ -10,18 +11,18 @@ class Command(BaseCommand):
 
         users = [
             {
-                "username": "student",
-                "password": "Student@123",
+                "username": os.getenv("STUDENT_USERNAME"),
+                "password": os.getenv("STUDENT_PASSWORD"),
                 "role": "student",
             },
             {
-                "username": "faculty",
-                "password": "Faculty@123",
+                "username": os.getenv("FACULTY_USERNAME"),
+                "password": os.getenv("FACULTY_PASSWORD"),
                 "role": "faculty",
             },
             {
-                "username": "admin",
-                "password": "Admin@123",
+                "username": os.getenv("ADMIN_USERNAME"),
+                "password": os.getenv("ADMIN_PASSWORD"),
                 "role": "admin",
             },
         ]
