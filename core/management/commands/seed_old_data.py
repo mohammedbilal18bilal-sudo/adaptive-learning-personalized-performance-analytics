@@ -16,11 +16,11 @@ class Command(BaseCommand):
     def handle(self, *args, **kwargs):
 
         # Get student user
-        student = User.objects.filter(username="student1").first()
+        student = User.objects.filter(username="Mohammed").first()
 
         if not student:
             self.stdout.write(
-                self.style.ERROR("student1 user not found. Run create_demo_users first.")
+                self.style.ERROR("Mohammed user not found. Run create_demo_users first.")
             )
             return
 
