@@ -31,9 +31,15 @@ The system provides a backend API for personalized learning and student performa
 - Python
 - Django
 - Django REST Framework
-- SQLite
 - Simple JWT
-- python-dotenv
+- SQLite – Local development database
+- PostgreSQL – Production database
+- python-dotenv – Environment variable management
+- Gunicorn – Application server
+- WhiteNoise – Static file serving
+- Git & GitHub – Version control
+- Postman – API testing
+- Render – Cloud deployment
 
 ## Project Structure
 
@@ -59,8 +65,9 @@ adaptive-learning-platform/
 │   ├── tests.py
 │   └── __init__.py
 │
-├── screenshot/
+├── screenshots/
 ├── manage.py
 ├── requirements.txt
+├── build.sh
 ├── .gitignore
 └── README.md
