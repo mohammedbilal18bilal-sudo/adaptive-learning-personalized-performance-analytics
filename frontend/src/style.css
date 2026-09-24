@@ -1,855 +1,678 @@
-/* ================================
-   GLOBAL
-================================ */
+/* =========================================================
+   LEARNSMART ROLE BASED LOGIN
+   ========================================================= */
 
-* {
-  margin: 0;
-  padding: 0;
+.role-login-page {
+  min-height: 100vh;
+  width: 100%;
+  display: flex;
+  background: #ffffff;
+  font-family: Arial, Helvetica, sans-serif;
+}
+
+
+/* =========================================================
+   LEFT SIDE
+   ========================================================= */
+
+.role-login-left {
+  width: 52%;
+  min-height: 100vh;
+  position: relative;
+  overflow: hidden;
+
+  background:
+    linear-gradient(
+      135deg,
+      rgba(37, 43, 92, 0.96),
+      rgba(79, 70, 229, 0.88)
+    );
+
+  color: white;
+}
+
+.left-overlay {
+  position: absolute;
+  inset: 0;
+
+  background:
+    radial-gradient(
+      circle at 15% 20%,
+      rgba(255,255,255,0.12),
+      transparent 30%
+    ),
+    radial-gradient(
+      circle at 90% 80%,
+      rgba(255,255,255,0.10),
+      transparent 30%
+    );
+}
+
+.left-content {
+  position: relative;
+  z-index: 2;
+
+  min-height: 100vh;
+
+  display: flex;
+  flex-direction: column;
+
+  padding: 55px 70px;
+
   box-sizing: border-box;
 }
 
-body {
-  font-family: Arial, Helvetica, sans-serif;
-  background: #f5f7fb;
-  color: #17213b;
-}
 
-a {
-  text-decoration: none;
-  color: inherit;
-}
+/* LOGO */
 
-button {
-  font-family: inherit;
-  cursor: pointer;
-}
-
-
-/* ================================
-   MAIN APP
-================================ */
-
-.app {
-  display: flex;
-  min-height: 100vh;
-}
-
-
-/* ================================
-   SIDEBAR
-================================ */
-
-.sidebar {
-  width: 215px;
-  min-height: 100vh;
-  background: #f8faff;
-  border-right: 1px solid #e5e9f2;
-  display: flex;
-  flex-direction: column;
-  padding: 22px 15px;
-  position: fixed;
-  left: 0;
-  top: 0;
-  bottom: 0;
-}
-
-
-/* Logo */
-
-.logo-section {
+.learnsmart-logo {
   display: flex;
   align-items: center;
-  gap: 10px;
-  padding: 5px 8px 30px;
+  gap: 12px;
 }
 
-.logo-icon {
-  width: 40px;
-  height: 40px;
-  background: #246bfd;
-  color: white;
-  border-radius: 10px;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  font-size: 21px;
-}
-
-.logo-section h2 {
-  font-size: 18px;
-  color: #16213d;
-}
-
-.logo-section p {
-  font-size: 9px;
-  color: #737b8c;
-  margin-top: 3px;
-}
-
-
-/* Navigation */
-
-.sidebar-nav {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-
-.nav-item {
+.logo-box {
+  width: 42px;
   height: 42px;
-  padding: 0 12px;
-  border-radius: 8px;
+
   display: flex;
   align-items: center;
-  gap: 13px;
-  color: #39445d;
-  font-size: 14px;
+  justify-content: center;
+
+  background: white;
+  color: #4f46e5;
+
+  border-radius: 10px;
+
+  font-size: 21px;
+  font-weight: 800;
+}
+
+.learnsmart-logo span {
+  font-size: 24px;
+  font-weight: 700;
+}
+
+
+/* MAIN TEXT */
+
+.left-main-content {
+  margin-top: auto;
+  margin-bottom: auto;
+
+  max-width: 570px;
+}
+
+.platform-label {
+  font-size: 12px;
+  font-weight: 700;
+
+  letter-spacing: 2px;
+
+  opacity: 0.75;
+
+  margin-bottom: 18px;
+}
+
+.left-main-content h1 {
+  margin: 0;
+
+  font-size: clamp(48px, 5vw, 72px);
+
+  line-height: 1.03;
+
+  letter-spacing: -3px;
+}
+
+.left-main-content h1 span {
+  color: #c4b5fd;
+}
+
+.platform-description {
+  max-width: 500px;
+
+  margin-top: 28px;
+
+  font-size: 16px;
+
+  line-height: 1.8;
+
+  color: rgba(255,255,255,0.78);
+}
+
+
+/* BOTTOM */
+
+.left-bottom {
+  display: flex;
+  justify-content: space-between;
+
+  font-size: 12px;
+
+  color: rgba(255,255,255,0.55);
+}
+
+
+/* =========================================================
+   RIGHT SIDE
+   ========================================================= */
+
+.role-login-right {
+  width: 48%;
+  min-height: 100vh;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  background: #fafafa;
+
+  padding: 50px;
+
+  box-sizing: border-box;
+}
+
+
+/* =========================================================
+   ROLE SELECTION
+   ========================================================= */
+
+.role-selection {
+  width: 100%;
+  max-width: 520px;
+}
+
+.right-heading {
+  margin-bottom: 35px;
+}
+
+.right-heading h1 {
+  margin: 0;
+
+  color: #1f2937;
+
+  font-size: 32px;
+
+  letter-spacing: -1px;
+}
+
+.right-heading p {
+  margin-top: 10px;
+
+  color: #6b7280;
+
+  font-size: 15px;
+}
+
+
+/* ROLE LIST */
+
+.role-list {
+  display: flex;
+  flex-direction: column;
+
+  gap: 16px;
+}
+
+
+/* ROLE CARD */
+
+.role-card {
+  width: 100%;
+
+  min-height: 105px;
+
+  display: flex;
+  align-items: center;
+
+  gap: 18px;
+
+  padding: 20px;
+
+  background: white;
+
+  border: 1px solid #e5e7eb;
+
+  border-radius: 5px;
+
+  text-align: left;
+
+  cursor: pointer;
+
+  transition: all 0.25s ease;
+
+  box-sizing: border-box;
+}
+
+.role-card:hover {
+  border-color: #6366f1;
+
+  box-shadow:
+    0 10px 30px rgba(79,70,229,0.10);
+
+  transform: translateX(4px);
+}
+
+
+/* ROLE ICON */
+
+.role-icon {
+  width: 55px;
+  height: 55px;
+
+  flex-shrink: 0;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  border-radius: 10px;
+
+  background: #eef2ff;
+
+  font-size: 25px;
+}
+
+
+/* ROLE INFORMATION */
+
+.role-information {
+  flex: 1;
+}
+
+.role-information h2 {
+  margin: 0 0 6px;
+
+  font-size: 18px;
+
+  color: #1f2937;
+}
+
+.role-information p {
+  margin: 0;
+
+  font-size: 12px;
+
+  line-height: 1.5;
+
+  color: #9ca3af;
+}
+
+
+/* ARROW */
+
+.role-arrow {
+  font-size: 25px;
+
+  color: #9ca3af;
+
+  transition: transform 0.2s ease;
+}
+
+.role-card:hover .role-arrow {
+  color: #4f46e5;
+
+  transform: translateX(4px);
+}
+
+
+/* FOOTER */
+
+.role-footer {
+  margin-top: 40px;
+
+  text-align: center;
+
+  color: #9ca3af;
+
+  font-size: 11px;
+}
+
+
+/* =========================================================
+   ACTUAL LOGIN FORM
+   ========================================================= */
+
+.actual-login {
+  width: 100%;
+  max-width: 450px;
+}
+
+
+/* BACK */
+
+.back-button {
+  border: none;
+
+  background: transparent;
+
+  color: #6366f1;
+
+  font-size: 13px;
+
+  padding: 0;
+
+  cursor: pointer;
+
+  margin-bottom: 35px;
+}
+
+.back-button:hover {
+  color: #4338ca;
+}
+
+
+/* HEADING */
+
+.selected-role-heading {
+  display: flex;
+
+  align-items: center;
+
+  gap: 16px;
+
+  margin-bottom: 35px;
+}
+
+.selected-role-icon {
+  width: 55px;
+  height: 55px;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  background: #eef2ff;
+
+  border-radius: 12px;
+
+  font-size: 25px;
+}
+
+.small-label {
+  margin: 0 0 4px;
+
+  color: #6366f1;
+
+  font-size: 10px;
+
+  font-weight: 700;
+
+  letter-spacing: 1.5px;
+}
+
+.selected-role-heading h1 {
+  margin: 0;
+
+  color: #1f2937;
+
+  font-size: 28px;
+}
+
+.selected-role-heading p {
+  margin: 6px 0 0;
+
+  color: #9ca3af;
+
+  font-size: 13px;
+}
+
+
+/* FORM */
+
+.login-form {
+  display: flex;
+
+  flex-direction: column;
+
+  gap: 22px;
+}
+
+.login-input-group label {
+  display: block;
+
+  margin-bottom: 8px;
+
+  color: #374151;
+
+  font-size: 13px;
+
+  font-weight: 600;
+}
+
+
+/* INPUT */
+
+.login-input-wrapper {
+  height: 52px;
+
+  display: flex;
+
+  align-items: center;
+
+  position: relative;
+
+  border: 1px solid #e5e7eb;
+
+  background: white;
+
+  border-radius: 6px;
+
+  box-sizing: border-box;
+
   transition: 0.2s;
 }
 
-.nav-item:hover {
-  background: #edf3ff;
-  color: #246bfd;
+.login-input-wrapper:focus-within {
+  border-color: #6366f1;
+
+  box-shadow:
+    0 0 0 3px rgba(99,102,241,0.10);
 }
 
-.nav-item.active {
-  background: #246bfd;
-  color: white;
-  box-shadow: 0 5px 12px rgba(36, 107, 253, 0.18);
-}
+.login-input-wrapper > span {
+  margin-left: 15px;
 
-.nav-item span:first-child {
-  width: 20px;
-  text-align: center;
-}
-
-
-/* Logout */
-
-.logout-section {
-  margin-top: auto;
-}
-
-.logout {
-  color: #e05252;
-}
-
-.logout:hover {
-  background: #fff0f0;
-  color: #d73535;
-}
-
-
-/* ================================
-   MAIN AREA
-================================ */
-
-.main-area {
-  margin-left: 215px;
-  width: calc(100% - 215px);
-  min-height: 100vh;
-}
-
-
-/* ================================
-   NAVBAR
-================================ */
-
-.navbar {
-  height: 72px;
-  background: white;
-  border-bottom: 1px solid #e9edf4;
-  display: flex;
-  justify-content: flex-end;
-  align-items: center;
-  padding: 0 30px;
-  gap: 25px;
-}
-
-
-/* Search */
-
-.search-box {
-  width: 250px;
-  height: 40px;
-  background: #f7f8fb;
-  border: 1px solid #e4e8ef;
-  border-radius: 8px;
-  display: flex;
-  align-items: center;
-  padding: 0 12px;
-  gap: 8px;
-}
-
-.search-box span {
-  font-size: 15px;
-}
-
-.search-box input {
-  width: 100%;
-  border: none;
-  outline: none;
-  background: transparent;
-  font-size: 12px;
-  color: #333;
-}
-
-.search-box input::placeholder {
-  color: #9aa1af;
-}
-
-
-/* Navbar right */
-
-.navbar-right {
-  display: flex;
-  align-items: center;
-  gap: 20px;
-}
-
-.notification {
-  position: relative;
-  font-size: 20px;
-}
-
-.notification-dot {
-  position: absolute;
-  top: -5px;
-  right: -6px;
-  width: 14px;
-  height: 14px;
-  background: #ed4c4c;
-  color: white;
-  border-radius: 50%;
-  font-size: 8px;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-}
-
-.profile-mini {
-  display: flex;
-  align-items: center;
-  gap: 9px;
-}
-
-.profile-avatar {
-  width: 38px;
-  height: 38px;
-  border-radius: 50%;
-  background: #e6edf9;
-  color: #53627d;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  font-weight: bold;
-}
-
-.profile-info {
-  display: flex;
-  flex-direction: column;
-  gap: 3px;
-}
-
-.profile-info strong {
-  font-size: 12px;
-  color: #1b2540;
-}
-
-.profile-info span {
-  font-size: 10px;
-  color: #7c8495;
-}
-
-.dropdown {
-  font-size: 16px;
-  color: #6c7483;
-}
-
-
-/* ================================
-   DASHBOARD
-================================ */
-
-.dashboard {
-  padding: 28px 30px 30px;
-}
-
-
-/* Welcome */
-
-.welcome-section {
-  margin-bottom: 22px;
-}
-
-.welcome-section h1 {
-  font-size: 23px;
-  color: #17213b;
-  margin-bottom: 6px;
-}
-
-.welcome-section p {
-  color: #747d8e;
-  font-size: 13px;
-}
-
-
-/* ================================
-   STATISTICS
-================================ */
-
-.stats-grid {
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 15px;
-  margin-bottom: 16px;
-}
-
-.stat-card {
-  background: white;
-  border: 1px solid #e9edf4;
-  border-radius: 10px;
-  padding: 17px;
-  display: flex;
-  align-items: center;
-  gap: 14px;
-  box-shadow: 0 3px 12px rgba(27, 48, 84, 0.04);
-}
-
-.stat-icon {
-  width: 48px;
-  height: 48px;
-  border-radius: 50%;
-  background: #edf5ff;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  font-size: 22px;
-  color: #246bfd;
-}
-
-.stat-content h2 {
-  font-size: 21px;
-  margin-bottom: 4px;
-  color: #17213b;
-}
-
-.stat-content p {
-  font-size: 11px;
-  color: #70798a;
-  margin-bottom: 5px;
-}
-
-.stat-content span {
-  font-size: 10px;
-  color: #21a567;
-  font-weight: 600;
-}
-
-
-/* ================================
-   GRID SECTIONS
-================================ */
-
-.middle-grid {
-  display: grid;
-  grid-template-columns: 1.65fr 1fr;
-  gap: 15px;
-  margin-bottom: 15px;
-}
-
-.bottom-grid {
-  display: grid;
-  grid-template-columns: 1.35fr 1fr;
-  gap: 15px;
-}
-
-
-/* ================================
-   DASHBOARD CARD
-================================ */
-
-.dashboard-card {
-  background: white;
-  border: 1px solid #e9edf4;
-  border-radius: 10px;
-  padding: 17px;
-  box-shadow: 0 3px 12px rgba(27, 48, 84, 0.04);
-}
-
-.card-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 14px;
-}
-
-.card-header h3 {
   font-size: 14px;
-  color: #17213b;
+
+  opacity: 0.6;
 }
 
-.card-header a {
-  font-size: 10px;
-  color: #2672e8;
-  font-weight: 600;
-}
+.login-input-wrapper input {
+  flex: 1;
 
-
-/* ================================
-   COURSES
-================================ */
-
-.course-row {
-  display: grid;
-  grid-template-columns: 38px 1.5fr 1fr 40px 75px;
-  align-items: center;
-  gap: 10px;
-  min-height: 55px;
-  border-bottom: 1px solid #f0f2f6;
-}
-
-.course-row:last-child {
-  border-bottom: none;
-}
-
-.course-icon {
-  width: 34px;
-  height: 34px;
-  border-radius: 7px;
-  background: #f0f4ff;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 18px;
-}
-
-.course-info h4 {
-  font-size: 11px;
-  color: #1c2742;
-  margin-bottom: 4px;
-}
-
-.course-info p {
-  font-size: 9px;
-  color: #7d8493;
-}
-
-.course-progress {
-  width: 100%;
-}
-
-.progress-bar {
-  width: 100%;
-  height: 7px;
-  background: #edf0f5;
-  border-radius: 10px;
-  overflow: hidden;
-}
-
-.progress-fill {
   height: 100%;
-  background: #2996e8;
-  border-radius: 10px;
-}
 
-.progress-number {
-  font-size: 10px;
-  color: #596377;
-  text-align: right;
-}
-
-.continue-btn {
   border: none;
-  background: #eaf4ff;
-  color: #2473d9;
-  border-radius: 5px;
-  padding: 8px 10px;
-  font-size: 9px;
+
+  outline: none;
+
+  padding: 0 12px;
+
+  background: transparent;
+
+  color: #1f2937;
+
+  font-size: 14px;
+}
+
+.login-input-wrapper input::placeholder {
+  color: #b0b5bd;
 }
 
 
-/* ================================
-   OVERALL PROGRESS
-================================ */
+/* SHOW PASSWORD */
 
-.progress-card {
-  min-height: 275px;
+.show-password {
+  border: none;
+
+  background: transparent;
+
+  color: #6366f1;
+
+  font-size: 11px;
+
+  font-weight: 600;
+
+  cursor: pointer;
+
+  margin-right: 12px;
 }
 
-.circle-progress {
-  width: 145px;
-  height: 145px;
-  border-radius: 50%;
-  background: conic-gradient(
-    #2c91e8 0deg 235deg,
-    #27b276 235deg 290deg,
-    #7755d8 290deg 360deg
-  );
-  margin: 10px auto 15px;
+
+/* ERROR */
+
+.role-login-error {
   display: flex;
-  align-items: center;
-  justify-content: center;
-}
 
-.circle-inner {
-  width: 105px;
-  height: 105px;
-  border-radius: 50%;
-  background: white;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-}
-
-.circle-inner strong {
-  font-size: 23px;
-  color: #17213b;
-}
-
-.circle-inner span {
-  font-size: 9px;
-  color: #7b8391;
-  margin-top: 3px;
-}
-
-.progress-legend {
-  margin-top: 5px;
-}
-
-.progress-legend p {
-  display: flex;
-  align-items: center;
-  gap: 7px;
-  font-size: 9px;
-  color: #60697b;
-  margin: 7px 0;
-}
-
-.progress-legend strong {
-  margin-left: auto;
-  color: #27314a;
-}
-
-.dot {
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-}
-
-.dot.blue {
-  background: #2c91e8;
-}
-
-.dot.green {
-  background: #27b276;
-}
-
-.dot.purple {
-  background: #7755d8;
-}
-
-
-/* Motivation */
-
-.motivation {
-  display: flex;
-  gap: 9px;
-  background: #f5f8ff;
-  border-radius: 7px;
-  padding: 9px;
-  margin-top: 12px;
-  font-size: 15px;
-}
-
-.motivation strong {
-  font-size: 10px;
-  color: #29334b;
-}
-
-.motivation p {
-  font-size: 8px;
-  color: #727b8c;
-  margin-top: 3px;
-}
-
-
-/* ================================
-   ASSESSMENTS
-================================ */
-
-.assessment-row {
-  display: grid;
-  grid-template-columns: 35px 1.5fr 105px 70px;
-  align-items: center;
   gap: 10px;
-  padding: 10px 0;
-  border-bottom: 1px solid #f0f2f6;
-}
 
-.assessment-row:last-child {
-  border-bottom: none;
-}
+  align-items: center;
 
-.assessment-icon {
-  width: 32px;
-  height: 32px;
+  padding: 12px;
+
   border-radius: 6px;
-  background: #fff2e6;
+
+  background: #fff1f2;
+
+  border: 1px solid #fecdd3;
+
+  color: #be123c;
+}
+
+.role-login-error span {
+  width: 20px;
+  height: 20px;
+
+  flex-shrink: 0;
+
   display: flex;
+
   align-items: center;
   justify-content: center;
-  font-size: 15px;
-}
 
-.assessment-info h4 {
-  font-size: 10px;
-  color: #1d2741;
-  margin-bottom: 4px;
-}
-
-.assessment-info p {
-  font-size: 8px;
-  color: #7b8390;
-}
-
-.assessment-date {
-  font-size: 8px;
-  color: #70798a;
-}
-
-.assessment-btn {
-  border: none;
-  padding: 7px 9px;
-  border-radius: 5px;
-  font-size: 9px;
-}
-
-.assessment-btn.start {
-  background: #eaf4ff;
-  color: #2473d9;
-}
-
-.assessment-btn.pending {
-  background: #fff1df;
-  color: #e68a20;
-}
-
-
-/* ================================
-   RECENT ACTIVITY
-================================ */
-
-.activity {
-  display: flex;
-  flex-direction: column;
-}
-
-.activity-item {
-  display: grid;
-  grid-template-columns: 27px 1fr auto;
-  align-items: center;
-  gap: 8px;
-  padding: 10px 0;
-  border-bottom: 1px solid #f0f2f6;
-}
-
-.activity-item:last-child {
-  border-bottom: none;
-}
-
-.activity-item > span {
-  width: 26px;
-  height: 26px;
-  background: #eef7ff;
   border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
+
+  background: #be123c;
+
+  color: white;
+
+  font-size: 11px;
+
+  font-weight: 700;
+}
+
+.role-login-error p {
+  margin: 0;
+
   font-size: 12px;
 }
 
-.activity-item p {
-  font-size: 9px;
-  color: #394258;
-}
 
-.activity-item small {
-  font-size: 8px;
-  color: #858c99;
-}
+/* BUTTON */
 
+.role-login-button {
+  width: 100%;
 
-/* ================================
-   RECOMMENDATION
-================================ */
+  height: 52px;
 
-.recommendation {
-  margin-top: 15px;
-  background: linear-gradient(
-    90deg,
-    #edf5ff,
-    #f7f2ff
-  );
-  border: 1px solid #dce8fb;
-  border-radius: 10px;
-  padding: 15px;
-  display: flex;
-  align-items: center;
-  gap: 13px;
-}
-
-.recommendation-icon {
-  font-size: 26px;
-}
-
-.recommendation h3 {
-  font-size: 13px;
-  margin-bottom: 4px;
-}
-
-.recommendation p {
-  font-size: 9px;
-  color: #697386;
-  line-height: 1.5;
-}
-
-.recommendation button {
-  margin-left: auto;
   border: none;
-  background: #246bfd;
-  color: white;
-  padding: 9px 14px;
+
   border-radius: 6px;
-  font-size: 9px;
+
+  background: #4f46e5;
+
+  color: white;
+
+  font-size: 14px;
+
+  font-weight: 700;
+
+  cursor: pointer;
+
+  transition: 0.2s;
+}
+
+.role-login-button:hover:not(:disabled) {
+  background: #4338ca;
+
+  box-shadow:
+    0 8px 20px rgba(79,70,229,0.20);
+}
+
+.role-login-button:disabled {
+  opacity: 0.65;
+
+  cursor: not-allowed;
 }
 
 
-/* ================================
-   FOOTER
-================================ */
+/* SECURITY */
 
-footer {
-  border-top: 1px solid #e5e9f0;
-  padding: 14px 30px;
-  font-size: 9px;
-  color: #8a91a0;
-  display: flex;
-  justify-content: space-between;
+.login-security {
+  margin-top: 30px;
+
+  text-align: center;
+
+  color: #9ca3af;
+
+  font-size: 11px;
 }
 
 
-/* ================================
-   RESPONSIVE
-================================ */
+/* =========================================================
+   MOBILE
+   ========================================================= */
 
-@media (max-width: 1100px) {
+@media (max-width: 800px) {
 
-  .stats-grid {
-    grid-template-columns: repeat(2, 1fr);
-  }
-
-  .middle-grid,
-  .bottom-grid {
-    grid-template-columns: 1fr;
-  }
-
-}
-
-
-@media (max-width: 750px) {
-
-  .sidebar {
-    width: 65px;
-    padding: 20px 8px;
-  }
-
-  .logo-section {
-    justify-content: center;
-  }
-
-  .logo-section > div:last-child,
-  .nav-item span:last-child {
+  .role-login-left {
     display: none;
   }
 
-  .nav-item {
-    justify-content: center;
+  .role-login-right {
+    width: 100%;
+
+    min-height: 100vh;
+
+    padding: 25px;
   }
 
-  .main-area {
-    margin-left: 65px;
-    width: calc(100% - 65px);
+  .role-selection {
+    max-width: 500px;
   }
 
-  .navbar {
-    padding: 0 15px;
-  }
-
-  .search-box {
-    width: 170px;
-  }
-
-  .profile-info,
-  .dropdown {
-    display: none;
-  }
-
-  .dashboard {
-    padding: 20px 15px;
-  }
-
-  .stats-grid {
-    grid-template-columns: 1fr;
-  }
-
-  .course-row {
-    grid-template-columns: 38px 1fr 60px;
-  }
-
-  .course-progress,
-  .progress-number {
-    display: none;
-  }
-
-  .assessment-row {
-    grid-template-columns: 35px 1fr 65px;
-  }
-
-  .assessment-date {
-    display: none;
+  .right-heading h1 {
+    font-size: 27px;
   }
 
 }
 
+@media (max-width: 450px) {
 
-@media (max-width: 500px) {
-
-  .welcome-section h1 {
-    font-size: 19px;
+  .role-login-right {
+    padding: 20px;
   }
 
-  .search-box {
-    display: none;
+  .role-card {
+    min-height: 95px;
+
+    padding: 15px;
   }
 
-  .navbar {
-    justify-content: flex-end;
+  .role-icon {
+    width: 45px;
+    height: 45px;
+
+    font-size: 20px;
   }
 
-  .recommendation {
-    flex-direction: column;
-    align-items: flex-start;
+  .role-information h2 {
+    font-size: 16px;
   }
 
-  .recommendation button {
-    margin-left: 0;
-  }
-
-  footer {
-    flex-direction: column;
-    gap: 5px;
+  .role-information p {
+    font-size: 11px;
   }
 
 }
