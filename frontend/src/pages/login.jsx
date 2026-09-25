@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import API_BASE_URL from "../services/api";
 
-function Login() {
+function Login({ onLogin }) {
   const [selectedRole, setSelectedRole] = useState(null);
 
   const [username, setUsername] = useState("");
@@ -15,19 +15,22 @@ function Login() {
     {
       id: "student",
       title: "Student Login",
-      description: "Access courses, lessons and your learning progress.",
+      description:
+        "Access courses, lessons and your learning progress.",
       icon: "🎓",
     },
     {
       id: "faculty",
       title: "Faculty Login",
-      description: "Manage courses, assessments and student performance.",
+      description:
+        "Manage courses, assessments and student performance.",
       icon: "👨‍🏫",
     },
     {
       id: "admin",
       title: "Admin Login",
-      description: "Manage users, courses and the learning platform.",
+      description:
+        "Manage users, courses and the learning platform.",
       icon: "⚙️",
     },
   ];
@@ -50,7 +53,15 @@ function Login() {
     e.preventDefault();
 
     setError("");
+
+    if (!username.trim() || !password.trim()) {
+      setError("Please enter both username and password.");
+      return;
+    }
+
     setLoading(true);
+
+    console.log("LOGIN: STARTED");
 
     try {
       const response = await fetch(`${API_BASE_URL}/token/`, {
@@ -59,31 +70,77 @@ function Login() {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          username: username,
+          username: username.trim(),
           password: password,
         }),
       });
 
+      console.log("LOGIN: RESPONSE STATUS", response.status);
+
       const data = await response.json();
 
       if (!response.ok) {
-        setError(data.detail || "Invalid username or password.");
-        return;
+        throw new Error(
+          data.detail || "Invalid username or password."
+        );
       }
 
+      if (!data.access || !data.refresh) {
+        throw new Error(
+          "Login succeeded, but authentication tokens were not received."
+        );
+      }
+
+      /*
+       * Save the JWT tokens received from the backend.
+       */
       localStorage.setItem("accessToken", data.access);
       localStorage.setItem("refreshToken", data.refresh);
 
-      alert("Login successful!");
-
-      // We will connect this to the Dashboard next.
-    } catch (error) {
-      console.error("Login error:", error);
-      setError(
-        "Unable to connect to the server. Please try again."
+      /*
+       * Save username and selected account type.
+       */
+      localStorage.setItem("username", username.trim());
+      localStorage.setItem(
+        "userRole",
+        selectedRole ? selectedRole.id : "student"
       );
-    } finally {
+
+      console.log("LOGIN: TOKEN SAVED");
+      console.log(
+        "LOGIN: TOKEN EXISTS",
+        Boolean(localStorage.getItem("accessToken"))
+      );
+
       setLoading(false);
+
+      /*
+       * Tell App.jsx that login was successful.
+       *
+       * App.jsx will then change from Login
+       * to Dashboard.
+       */
+      if (typeof onLogin === "function") {
+        console.log("LOGIN: CALLING APP onLogin()");
+        onLogin();
+        return;
+      }
+
+      /*
+       * Safety fallback in case Login is opened
+       * without the onLogin prop.
+       */
+      console.log("LOGIN: onLogin unavailable");
+      window.location.reload();
+    } catch (loginError) {
+      console.error("LOGIN ERROR:", loginError);
+
+      setLoading(false);
+
+      setError(
+        loginError.message ||
+          "Unable to connect to the server. Please try again."
+      );
     }
   };
 
@@ -133,7 +190,6 @@ function Login() {
 
       </section>
 
-
       {/* RIGHT SIDE */}
       <section className="role-login-right">
 
@@ -158,6 +214,7 @@ function Login() {
 
                 <button
                   key={role.id}
+                  type="button"
                   className="role-card"
                   onClick={() => handleRoleSelect(role)}
                 >
@@ -196,6 +253,7 @@ function Login() {
           <div className="actual-login">
 
             <button
+              type="button"
               className="back-button"
               onClick={handleBack}
             >
@@ -205,12 +263,11 @@ function Login() {
             <div className="selected-role-heading">
 
               <div className="selected-role-icon">
-                {roles.find(
-                  (role) => role.id === selectedRole.id
-                )?.icon}
+                {selectedRole.icon}
               </div>
 
               <div>
+
                 <p className="small-label">
                   LEARNSMART
                 </p>
@@ -220,10 +277,20 @@ function Login() {
                 <p>
                   Sign in to continue to your account.
                 </p>
+
               </div>
 
             </div>
 
+            {error && (
+              <div className="role-login-error">
+
+                <span>!</span>
+
+                <p>{error}</p>
+
+              </div>
+            )}
 
             <form
               className="login-form"
@@ -250,13 +317,13 @@ function Login() {
                     onChange={(e) =>
                       setUsername(e.target.value)
                     }
+                    disabled={loading}
                     required
                   />
 
                 </div>
 
               </div>
-
 
               {/* PASSWORD */}
 
@@ -282,6 +349,7 @@ function Login() {
                     onChange={(e) =>
                       setPassword(e.target.value)
                     }
+                    disabled={loading}
                     required
                   />
 
@@ -298,22 +366,6 @@ function Login() {
                 </div>
 
               </div>
-
-
-              {/* ERROR */}
-
-              {error && (
-
-                <div className="role-login-error">
-
-                  <span>!</span>
-
-                  <p>{error}</p>
-
-                </div>
-
-              )}
-
 
               {/* LOGIN BUTTON */}
 
@@ -334,11 +386,8 @@ function Login() {
 
             </form>
 
-
             <div className="login-security">
-
               🔐 Secure login to your LearnSmart account
-
             </div>
 
           </div>
