@@ -1,4 +1,5 @@
 import os
+import time
 
 from rest_framework import viewsets
 from rest_framework.permissions import IsAuthenticated
@@ -6,7 +7,6 @@ from rest_framework.views import APIView
 from rest_framework.response import Response
 
 from google import genai
-from google.genai import types
 
 from .models import (
     Course,
@@ -107,10 +107,6 @@ class StudentChatbotView(APIView):
 
     permission_classes = [IsAuthenticated]
 
-    # --------------------------------------------------------
-    # GET DATABASE DATA SAFELY
-    # --------------------------------------------------------
-
     def get_model_data(self, model_class, user=None, limit=50):
 
         try:
@@ -158,7 +154,6 @@ class StudentChatbotView(APIView):
 
                         field_name = field.name
 
-                        # Do not expose sensitive information
                         if field_name.lower() in [
                             "password",
                             "secret",
@@ -183,10 +178,6 @@ class StudentChatbotView(APIView):
 
         except Exception:
             return []
-
-    # --------------------------------------------------------
-    # BUILD STUDENT CONTEXT
-    # --------------------------------------------------------
 
     def build_student_context(self, user):
 
@@ -227,10 +218,6 @@ class StudentChatbotView(APIView):
                 limit=30,
             ),
         }
-
-    # --------------------------------------------------------
-    # CHATBOT POST
-    # --------------------------------------------------------
 
     def post(self, request):
 
@@ -284,7 +271,7 @@ class StudentChatbotView(APIView):
         )
 
         # ====================================================
-        # AI SYSTEM INSTRUCTIONS
+        # AI INSTRUCTIONS
         # ====================================================
 
         instructions = """
@@ -319,35 +306,23 @@ general study recommendation.
 7. Never invent student scores, progress, courses,
 lessons or assessment results.
 
-8. Only use student information that is included in
-the provided context.
+8. Only use student information included in the
+provided context.
 
-9. Never claim to have accessed information that is not
-present in the context.
+9. Never claim to have accessed information that is
+not present in the context.
 
 10. Act as a friendly personal academic tutor.
 
-11. Encourage the student and help them create a
-practical learning plan.
+11. Encourage the student and help create a practical
+learning plan.
 
 12. If the student asks something unrelated to studying,
 answer briefly and politely.
 """
 
         # ====================================================
-        # PREPARE PROMPT
-        # ====================================================
-
-        prompt = (
-            "Student information:\n\n"
-            + str(student_context)
-            + "\n\n"
-            "Student question:\n\n"
-            + message
-        )
-
-        # ====================================================
-        # GEMINI REQUEST
+        # GEMINI REQUEST WITH AUTOMATIC RETRY
         # ====================================================
 
         try:
@@ -356,24 +331,66 @@ answer briefly and politely.
                 api_key=api_key
             )
 
-            response = client.models.generate_content(
-                model=model,
-                contents=prompt,
-                config=types.GenerateContentConfig(
-                    system_instruction=instructions,
-                ),
-            )
+            answer = None
+            max_retries = 3
 
-            answer = response.text
+            for attempt in range(max_retries):
 
-            if not answer:
+                try:
+
+                    response = client.models.generate_content(
+                        model=model,
+                        contents=(
+                            instructions
+                            + "\n\nStudent information:\n\n"
+                            + str(student_context)
+                            + "\n\nStudent question:\n\n"
+                            + message
+                        ),
+                    )
+
+                    answer = response.text
+                    break
+
+                except Exception as gemini_error:
+
+                    error_text = str(gemini_error)
+
+                    if (
+                        "503" in error_text
+                        or "UNAVAILABLE" in error_text
+                    ):
+
+                        if attempt < max_retries - 1:
+
+                            wait_time = 5 * (2 ** attempt)
+
+                            time.sleep(wait_time)
+
+                            continue
+
+                    raise gemini_error
+
+            # =================================================
+            # NO ANSWER
+            # =================================================
+
+            if answer is None:
+
                 return Response(
                     {
-                        "error": "Gemini returned an empty response.",
+                        "error": (
+                            "Gemini service is temporarily "
+                            "unavailable. Please try again later."
+                        ),
                         "model": model,
                     },
-                    status=502,
+                    status=503,
                 )
+
+            # =================================================
+            # SUCCESS
+            # =================================================
 
             return Response(
                 {
@@ -383,14 +400,16 @@ answer briefly and politely.
                 status=200,
             )
 
-        except Exception as e:
+        # ====================================================
+        # GEMINI ERROR
+        # ====================================================
 
-            error_message = str(e)
+        except Exception as e:
 
             return Response(
                 {
                     "error": "Gemini AI service returned an error.",
-                    "details": error_message,
+                    "details": str(e),
                     "model": model,
                 },
                 status=502,
