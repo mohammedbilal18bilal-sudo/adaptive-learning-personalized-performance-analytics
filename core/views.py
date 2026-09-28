@@ -5,8 +5,7 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.views import APIView
 from rest_framework.response import Response
 
-from google import genai
-from google.genai import types
+from openai import OpenAI
 
 from .models import (
     Course,
@@ -100,7 +99,7 @@ class AssessmentAttemptViewSet(viewsets.ModelViewSet):
 
 
 # ============================================================
-# AI CHATBOT - GEMINI
+# AI CHATBOT - OPENAI
 # ============================================================
 
 class StudentChatbotView(APIView):
@@ -236,17 +235,17 @@ class StudentChatbotView(APIView):
             )
 
         # ====================================================
-        # GEMINI API KEY
+        # OPENAI API KEY
         # ====================================================
 
-        api_key = os.getenv("GEMINI_API_KEY")
+        api_key = os.getenv("OPENAI_API_KEY")
 
         if not api_key:
 
             return Response(
                 {
                     "error": (
-                        "GEMINI_API_KEY is not configured "
+                        "OPENAI_API_KEY is not configured "
                         "on the server."
                     )
                 },
@@ -254,12 +253,12 @@ class StudentChatbotView(APIView):
             )
 
         # ====================================================
-        # GEMINI MODEL
+        # OPENAI MODEL
         # ====================================================
 
         model = os.getenv(
-            "GEMINI_MODEL",
-            "gemini-3.8-flash"
+            "OPENAI_MODEL",
+            "gpt-5.6-luna"
         )
 
         # ====================================================
@@ -292,11 +291,9 @@ giving answers.
 use the available course, lesson and progress data.
 
 4. If progress information is unavailable, clearly say
-that the information is unavailable and provide a
-general study recommendation.
+that the information is unavailable.
 
 5. When explaining a topic, provide:
-
 - Simple explanation
 - Example
 - Important points
@@ -307,7 +304,8 @@ general study recommendation.
 7. Never invent student scores, progress, courses,
 lessons or assessment results.
 
-8. Only use student information included in the context.
+8. Only use student information that is included in
+the provided context.
 
 9. Never claim to have accessed information that is not
 present in the context.
@@ -316,39 +314,31 @@ present in the context.
 
 11. Encourage the student and help them create a
 practical learning plan.
-
-12. If the student asks something unrelated to studying,
-answer briefly and politely.
 """
 
         # ====================================================
-        # GEMINI REQUEST
+        # OPENAI REQUEST
         # ====================================================
 
         try:
 
-            client = genai.Client(
+            client = OpenAI(
                 api_key=api_key
             )
 
-            prompt = (
-                "Student information:\n\n"
-                + str(student_context)
-                + "\n\n"
-                "Student question:\n\n"
-                + message
-            )
-
-            response = client.models.generate_content(
+            response = client.responses.create(
                 model=model,
-                contents=prompt,
-                config=types.GenerateContentConfig(
-                    system_instruction=instructions,
-                    temperature=0.7,
+                instructions=instructions,
+                input=(
+                    "Student information:\n\n"
+                    + str(student_context)
+                    + "\n\n"
+                    "Student question:\n\n"
+                    + message
                 ),
             )
 
-            answer = response.text
+            answer = response.output_text
 
             return Response(
                 {
@@ -362,7 +352,7 @@ answer briefly and politely.
 
             return Response(
                 {
-                    "error": "Gemini service returned an error.",
+                    "error": "AI service returned an error.",
                     "details": str(e),
                     "model": model,
                 },
