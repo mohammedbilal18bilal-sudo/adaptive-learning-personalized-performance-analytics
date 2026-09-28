@@ -1,8 +1,9 @@
 import os
-from django.contrib.auth.models import User
+
+from rest_framework import viewsets
+from rest_framework.permissions import IsAuthenticated
 from rest_framework.views import APIView
 from rest_framework.response import Response
-from rest_framework.permissions import IsAuthenticated
 
 from openai import OpenAI
 
@@ -16,14 +17,92 @@ from .models import (
     AssessmentAttempt,
 )
 
+from .serializers import (
+    CourseSerializer,
+    LessonSerializer,
+    StudentProgressSerializer,
+    UserProfileSerializer,
+    AssessmentSerializer,
+    QuestionSerializer,
+    AssessmentAttemptSerializer,
+)
+
+
+# ============================================================
+# COURSE
+# ============================================================
+
+class CourseViewSet(viewsets.ModelViewSet):
+    queryset = Course.objects.all()
+    serializer_class = CourseSerializer
+    permission_classes = [IsAuthenticated]
+
+
+# ============================================================
+# LESSON
+# ============================================================
+
+class LessonViewSet(viewsets.ModelViewSet):
+    queryset = Lesson.objects.all()
+    serializer_class = LessonSerializer
+    permission_classes = [IsAuthenticated]
+
+
+# ============================================================
+# STUDENT PROGRESS
+# ============================================================
+
+class StudentProgressViewSet(viewsets.ModelViewSet):
+    queryset = StudentProgress.objects.all()
+    serializer_class = StudentProgressSerializer
+    permission_classes = [IsAuthenticated]
+
+
+# ============================================================
+# USER PROFILE
+# ============================================================
+
+class UserProfileViewSet(viewsets.ModelViewSet):
+    queryset = UserProfile.objects.all()
+    serializer_class = UserProfileSerializer
+    permission_classes = [IsAuthenticated]
+
+
+# ============================================================
+# ASSESSMENT
+# ============================================================
+
+class AssessmentViewSet(viewsets.ModelViewSet):
+    queryset = Assessment.objects.all()
+    serializer_class = AssessmentSerializer
+    permission_classes = [IsAuthenticated]
+
+
+# ============================================================
+# QUESTION
+# ============================================================
+
+class QuestionViewSet(viewsets.ModelViewSet):
+    queryset = Question.objects.all()
+    serializer_class = QuestionSerializer
+    permission_classes = [IsAuthenticated]
+
+
+# ============================================================
+# ASSESSMENT ATTEMPT
+# ============================================================
+
+class AssessmentAttemptViewSet(viewsets.ModelViewSet):
+    queryset = AssessmentAttempt.objects.all()
+    serializer_class = AssessmentAttemptSerializer
+    permission_classes = [IsAuthenticated]
+
+
+# ============================================================
+# AI CHATBOT - OPENAI
+# ============================================================
 
 class StudentChatbotView(APIView):
-    """
-    AI chatbot for students using OpenAI.
-
-    The chatbot can use the student's available course,
-    lesson, progress and assessment information as context.
-    """
 
     permission_classes = [IsAuthenticated]
 
@@ -36,9 +115,8 @@ class StudentChatbotView(APIView):
         try:
             queryset = model_class.objects.all()
 
-            # If the model has a user/student relationship,
-            # try to filter it automatically.
             if user is not None:
+
                 field_names = [
                     field.name
                     for field in model_class._meta.get_fields()
@@ -53,12 +131,15 @@ class StudentChatbotView(APIView):
                 ]
 
                 for field_name in possible_user_fields:
+
                     if field_name in field_names:
+
                         try:
                             queryset = queryset.filter(
                                 **{field_name: user}
                             )
                             break
+
                         except Exception:
                             pass
 
@@ -67,14 +148,17 @@ class StudentChatbotView(APIView):
             results = []
 
             for obj in queryset:
+
                 data = {}
 
                 for field in obj._meta.fields:
-                    try:
-                        value = getattr(obj, field.name)
 
-                        # Don't expose passwords/secrets
-                        if field.name.lower() in [
+                    try:
+
+                        field_name = field.name
+
+                        # Never expose sensitive fields
+                        if field_name.lower() in [
                             "password",
                             "secret",
                             "secret_key",
@@ -82,11 +166,12 @@ class StudentChatbotView(APIView):
                         ]:
                             continue
 
-                        # Convert related objects to strings
+                        value = getattr(obj, field_name)
+
                         if hasattr(value, "pk"):
                             value = str(value)
 
-                        data[field.name] = str(value)
+                        data[field_name] = str(value)
 
                     except Exception:
                         continue
@@ -100,10 +185,10 @@ class StudentChatbotView(APIView):
 
     def build_student_context(self, user):
         """
-        Build useful learning context for the AI.
+        Build learning context for the AI chatbot.
         """
 
-        context = {
+        return {
             "student": {
                 "username": user.username,
                 "first_name": user.first_name,
@@ -141,22 +226,15 @@ class StudentChatbotView(APIView):
             ),
         }
 
-        return context
-
     def post(self, request):
-        """
-        POST /api/chatbot/
 
-        Body:
-
-        {
-            "message": "What should I study next?"
-        }
-        """
-
-        message = request.data.get("message", "").strip()
+        message = request.data.get(
+            "message",
+            ""
+        ).strip()
 
         if not message:
+
             return Response(
                 {
                     "error": "Message is required."
@@ -164,98 +242,113 @@ class StudentChatbotView(APIView):
                 status=400,
             )
 
-        # --------------------------------------------------
+        # ====================================================
         # OPENAI API KEY
-        # --------------------------------------------------
+        # ====================================================
 
         api_key = os.getenv("OPENAI_API_KEY")
 
         if not api_key:
+
             return Response(
                 {
-                    "error": "OPENAI_API_KEY is not configured on the server."
+                    "error": (
+                        "OPENAI_API_KEY is not configured "
+                        "on the server."
+                    )
                 },
                 status=500,
             )
 
-        # --------------------------------------------------
+        # ====================================================
         # OPENAI MODEL
-        # --------------------------------------------------
+        # ====================================================
 
         model = os.getenv(
             "OPENAI_MODEL",
-            "gpt-5.5"
+            "gpt-5.6-luna"
         )
 
-        # --------------------------------------------------
-        # BUILD STUDENT CONTEXT
-        # --------------------------------------------------
+        # ====================================================
+        # STUDENT CONTEXT
+        # ====================================================
 
         student_context = self.build_student_context(
             request.user
         )
 
-        # --------------------------------------------------
-        # SYSTEM INSTRUCTIONS
-        # --------------------------------------------------
+        # ====================================================
+        # AI INSTRUCTIONS
+        # ====================================================
 
         instructions = """
-You are LearnSmart, an AI learning assistant inside an
-adaptive learning platform.
+You are LearnSmart, an AI learning assistant inside
+an adaptive learning platform.
 
 Your job is to help students understand their courses,
 lessons, progress and assessments.
 
-Important rules:
+Rules:
 
 1. Give clear and beginner-friendly explanations.
-2. Help the student understand concepts rather than
-   simply giving answers.
+
+2. Help students understand concepts instead of simply
+   giving answers.
+
 3. When the student asks what they should study next,
-   use their available learning progress and course
-   information when possible.
-4. If progress information is unavailable, say so and
-   give a general study recommendation.
-5. If the student asks about a topic, explain it with:
+   use the available course, lesson and progress data.
+
+4. If progress information is unavailable, clearly say
+   that the information is unavailable and provide a
+   general study recommendation.
+
+5. When explaining a topic, provide:
    - Simple explanation
    - Example
    - Important points
    - Practice suggestion
+
 6. Keep responses concise but useful.
-7. Do not invent student scores, progress or course data.
-8. Do not claim that you accessed information that is
-   not present in the provided student context.
-9. Be encouraging and act like a personal academic tutor.
+
+7. Never invent student scores, progress, courses,
+   lessons or assessment results.
+
+8. Only use student information that is included in the
+   provided context.
+
+9. Never claim to have accessed information that is not
+   present in the context.
+
+10. Act as a friendly personal academic tutor.
+
+11. Encourage the student and help them create a
+    practical learning plan.
+
+12. If the student asks a question unrelated to studying,
+    answer briefly and politely, then guide them back
+    toward their learning goals when appropriate.
 """
 
-        # --------------------------------------------------
-        # CREATE OPENAI CLIENT
-        # --------------------------------------------------
+        # ====================================================
+        # OPENAI REQUEST
+        # ====================================================
 
         try:
+
             client = OpenAI(
                 api_key=api_key
             )
 
-            # --------------------------------------------------
-            # CREATE AI RESPONSE
-            # --------------------------------------------------
-
             response = client.responses.create(
                 model=model,
                 instructions=instructions,
-                input=[
-                    {
-                        "role": "user",
-                        "content": (
-                            "Student information:\n\n"
-                            + str(student_context)
-                            + "\n\n"
-                            "Student question:\n\n"
-                            + message
-                        ),
-                    }
-                ],
+                input=(
+                    "Student information:\n\n"
+                    + str(student_context)
+                    + "\n\n"
+                    "Student question:\n\n"
+                    + message
+                ),
             )
 
             answer = response.output_text
