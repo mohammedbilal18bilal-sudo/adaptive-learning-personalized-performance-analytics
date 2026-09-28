@@ -5,7 +5,8 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.views import APIView
 from rest_framework.response import Response
 
-from openai import OpenAI
+from google import genai
+from google.genai import types
 
 from .models import (
     Course,
@@ -99,12 +100,16 @@ class AssessmentAttemptViewSet(viewsets.ModelViewSet):
 
 
 # ============================================================
-# AI CHATBOT - OPENAI
+# AI CHATBOT - GEMINI
 # ============================================================
 
 class StudentChatbotView(APIView):
 
     permission_classes = [IsAuthenticated]
+
+    # --------------------------------------------------------
+    # GET DATABASE DATA SAFELY
+    # --------------------------------------------------------
 
     def get_model_data(self, model_class, user=None, limit=50):
 
@@ -153,6 +158,7 @@ class StudentChatbotView(APIView):
 
                         field_name = field.name
 
+                        # Do not expose sensitive information
                         if field_name.lower() in [
                             "password",
                             "secret",
@@ -177,6 +183,10 @@ class StudentChatbotView(APIView):
 
         except Exception:
             return []
+
+    # --------------------------------------------------------
+    # BUILD STUDENT CONTEXT
+    # --------------------------------------------------------
 
     def build_student_context(self, user):
 
@@ -218,6 +228,10 @@ class StudentChatbotView(APIView):
             ),
         }
 
+    # --------------------------------------------------------
+    # CHATBOT POST
+    # --------------------------------------------------------
+
     def post(self, request):
 
         message = request.data.get(
@@ -235,17 +249,17 @@ class StudentChatbotView(APIView):
             )
 
         # ====================================================
-        # OPENAI API KEY
+        # GEMINI API KEY
         # ====================================================
 
-        api_key = os.getenv("OPENAI_API_KEY")
+        api_key = os.getenv("GEMINI_API_KEY")
 
         if not api_key:
 
             return Response(
                 {
                     "error": (
-                        "OPENAI_API_KEY is not configured "
+                        "GEMINI_API_KEY is not configured "
                         "on the server."
                     )
                 },
@@ -253,12 +267,12 @@ class StudentChatbotView(APIView):
             )
 
         # ====================================================
-        # OPENAI MODEL
+        # GEMINI MODEL
         # ====================================================
 
         model = os.getenv(
-            "OPENAI_MODEL",
-            "gpt-5.6-luna"
+            "GEMINI_MODEL",
+            "gemini-3.8-flash"
         )
 
         # ====================================================
@@ -270,7 +284,7 @@ class StudentChatbotView(APIView):
         )
 
         # ====================================================
-        # AI INSTRUCTIONS
+        # AI SYSTEM INSTRUCTIONS
         # ====================================================
 
         instructions = """
@@ -291,7 +305,8 @@ giving answers.
 use the available course, lesson and progress data.
 
 4. If progress information is unavailable, clearly say
-that the information is unavailable.
+that the information is unavailable and provide a
+general study recommendation.
 
 5. When explaining a topic, provide:
 - Simple explanation
@@ -314,31 +329,51 @@ present in the context.
 
 11. Encourage the student and help them create a
 practical learning plan.
+
+12. If the student asks something unrelated to studying,
+answer briefly and politely.
 """
 
         # ====================================================
-        # OPENAI REQUEST
+        # PREPARE PROMPT
+        # ====================================================
+
+        prompt = (
+            "Student information:\n\n"
+            + str(student_context)
+            + "\n\n"
+            "Student question:\n\n"
+            + message
+        )
+
+        # ====================================================
+        # GEMINI REQUEST
         # ====================================================
 
         try:
 
-            client = OpenAI(
+            client = genai.Client(
                 api_key=api_key
             )
 
-            response = client.responses.create(
+            response = client.models.generate_content(
                 model=model,
-                instructions=instructions,
-                input=(
-                    "Student information:\n\n"
-                    + str(student_context)
-                    + "\n\n"
-                    "Student question:\n\n"
-                    + message
+                contents=prompt,
+                config=types.GenerateContentConfig(
+                    system_instruction=instructions,
                 ),
             )
 
-            answer = response.output_text
+            answer = response.text
+
+            if not answer:
+                return Response(
+                    {
+                        "error": "Gemini returned an empty response.",
+                        "model": model,
+                    },
+                    status=502,
+                )
 
             return Response(
                 {
@@ -350,10 +385,12 @@ practical learning plan.
 
         except Exception as e:
 
+            error_message = str(e)
+
             return Response(
                 {
-                    "error": "AI service returned an error.",
-                    "details": str(e),
+                    "error": "Gemini AI service returned an error.",
+                    "details": error_message,
                     "model": model,
                 },
                 status=502,
