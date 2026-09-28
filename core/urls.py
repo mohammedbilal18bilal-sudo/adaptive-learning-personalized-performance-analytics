@@ -9,6 +9,7 @@ from .views import (
     AssessmentViewSet,
     QuestionViewSet,
     AssessmentAttemptViewSet,
+    StudentChatbotView,
 )
 
 
@@ -24,5 +25,15 @@ router.register(r'attempts', AssessmentAttemptViewSet)
 
 
 urlpatterns = [
-    path('', include(router.urls)),
+
+    path(
+        '',
+        include(router.urls)
+    ),
+
+    path(
+        'chatbot/',
+        StudentChatbotView.as_view(),
+        name='student-chatbot'
+    ),
 ]
