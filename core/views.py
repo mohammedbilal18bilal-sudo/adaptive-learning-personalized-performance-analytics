@@ -5,7 +5,8 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.views import APIView
 from rest_framework.response import Response
 
-from openai import OpenAI
+from google import genai
+from google.genai import types
 
 from .models import (
     Course,
@@ -99,7 +100,7 @@ class AssessmentAttemptViewSet(viewsets.ModelViewSet):
 
 
 # ============================================================
-# AI CHATBOT - OPENAI
+# AI CHATBOT - GEMINI
 # ============================================================
 
 class StudentChatbotView(APIView):
@@ -107,10 +108,6 @@ class StudentChatbotView(APIView):
     permission_classes = [IsAuthenticated]
 
     def get_model_data(self, model_class, user=None, limit=50):
-        """
-        Safely collect database information without assuming
-        exact field names in the models.
-        """
 
         try:
             queryset = model_class.objects.all()
@@ -157,7 +154,6 @@ class StudentChatbotView(APIView):
 
                         field_name = field.name
 
-                        # Never expose sensitive fields
                         if field_name.lower() in [
                             "password",
                             "secret",
@@ -184,9 +180,6 @@ class StudentChatbotView(APIView):
             return []
 
     def build_student_context(self, user):
-        """
-        Build learning context for the AI chatbot.
-        """
 
         return {
             "student": {
@@ -243,17 +236,17 @@ class StudentChatbotView(APIView):
             )
 
         # ====================================================
-        # OPENAI API KEY
+        # GEMINI API KEY
         # ====================================================
 
-        api_key = os.getenv("OPENAI_API_KEY")
+        api_key = os.getenv("GEMINI_API_KEY")
 
         if not api_key:
 
             return Response(
                 {
                     "error": (
-                        "OPENAI_API_KEY is not configured "
+                        "GEMINI_API_KEY is not configured "
                         "on the server."
                     )
                 },
@@ -261,12 +254,12 @@ class StudentChatbotView(APIView):
             )
 
         # ====================================================
-        # OPENAI MODEL
+        # GEMINI MODEL
         # ====================================================
 
         model = os.getenv(
-            "OPENAI_MODEL",
-            "gpt-5.6-luna"
+            "GEMINI_MODEL",
+            "gemini-3.8-flash"
         )
 
         # ====================================================
@@ -293,65 +286,69 @@ Rules:
 1. Give clear and beginner-friendly explanations.
 
 2. Help students understand concepts instead of simply
-   giving answers.
+giving answers.
 
 3. When the student asks what they should study next,
-   use the available course, lesson and progress data.
+use the available course, lesson and progress data.
 
 4. If progress information is unavailable, clearly say
-   that the information is unavailable and provide a
-   general study recommendation.
+that the information is unavailable and provide a
+general study recommendation.
 
 5. When explaining a topic, provide:
-   - Simple explanation
-   - Example
-   - Important points
-   - Practice suggestion
+
+- Simple explanation
+- Example
+- Important points
+- Practice suggestion
 
 6. Keep responses concise but useful.
 
 7. Never invent student scores, progress, courses,
-   lessons or assessment results.
+lessons or assessment results.
 
-8. Only use student information that is included in the
-   provided context.
+8. Only use student information included in the context.
 
 9. Never claim to have accessed information that is not
-   present in the context.
+present in the context.
 
 10. Act as a friendly personal academic tutor.
 
 11. Encourage the student and help them create a
-    practical learning plan.
+practical learning plan.
 
-12. If the student asks a question unrelated to studying,
-    answer briefly and politely, then guide them back
-    toward their learning goals when appropriate.
+12. If the student asks something unrelated to studying,
+answer briefly and politely.
 """
 
         # ====================================================
-        # OPENAI REQUEST
+        # GEMINI REQUEST
         # ====================================================
 
         try:
 
-            client = OpenAI(
+            client = genai.Client(
                 api_key=api_key
             )
 
-            response = client.responses.create(
+            prompt = (
+                "Student information:\n\n"
+                + str(student_context)
+                + "\n\n"
+                "Student question:\n\n"
+                + message
+            )
+
+            response = client.models.generate_content(
                 model=model,
-                instructions=instructions,
-                input=(
-                    "Student information:\n\n"
-                    + str(student_context)
-                    + "\n\n"
-                    "Student question:\n\n"
-                    + message
+                contents=prompt,
+                config=types.GenerateContentConfig(
+                    system_instruction=instructions,
+                    temperature=0.7,
                 ),
             )
 
-            answer = response.output_text
+            answer = response.text
 
             return Response(
                 {
@@ -365,7 +362,7 @@ Rules:
 
             return Response(
                 {
-                    "error": "AI service returned an error.",
+                    "error": "Gemini service returned an error.",
                     "details": str(e),
                     "model": model,
                 },
