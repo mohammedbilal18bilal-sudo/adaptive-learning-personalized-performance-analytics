@@ -1,4 +1,6 @@
 import os
+import time
+import random
 import requests
 
 from django.conf import settings
@@ -76,16 +78,16 @@ class StudentChatbotView(APIView):
     """
     Student-specific AI chatbot.
 
-    The chatbot receives:
-    - authenticated student
+    The chatbot uses the authenticated student's:
     - courses
     - lessons
-    - student progress
+    - progress
     - scores
     - attempts
+    - weak topics
+    - incomplete lessons
 
-    It uses this information to provide personalized
-    learning assistance.
+    Gemini is used to provide personalized learning assistance.
     """
 
     permission_classes = [IsAuthenticated]
@@ -103,7 +105,7 @@ class StudentChatbotView(APIView):
                 {
                     "error": "Message is required."
                 },
-                status=status.HTTP_400_BAD_REQUEST
+                status=status.HTTP_400_BAD_REQUEST,
             )
 
         # -------------------------------------------------
@@ -121,9 +123,12 @@ class StudentChatbotView(APIView):
         if role != "student":
             return Response(
                 {
-                    "error": "The chatbot is currently available only for students."
+                    "error": (
+                        "The chatbot is currently available "
+                        "only for students."
+                    )
                 },
-                status=status.HTTP_403_FORBIDDEN
+                status=status.HTTP_403_FORBIDDEN,
             )
 
         # -------------------------------------------------
@@ -180,7 +185,8 @@ class StudentChatbotView(APIView):
         # -------------------------------------------------
 
         completed_count = sum(
-            1 for item in progress_context
+            1
+            for item in progress_context
             if item["completed"]
         )
 
@@ -201,7 +207,9 @@ class StudentChatbotView(APIView):
         weak_topics = [
             item
             for item in progress_context
-            if item["completed"] and item["score"] < 60
+            if item["completed"]
+            and item["score"] is not None
+            and item["score"] < 60
         ]
 
         incomplete_lessons = [
@@ -234,10 +242,11 @@ class StudentChatbotView(APIView):
             return Response(
                 {
                     "error": (
-                        "Gemini API key is not configured on the server."
+                        "Gemini API key is not configured "
+                        "on the server."
                     )
                 },
-                status=status.HTTP_503_SERVICE_UNAVAILABLE
+                status=status.HTTP_503_SERVICE_UNAVAILABLE,
             )
 
         # -------------------------------------------------
@@ -246,7 +255,7 @@ class StudentChatbotView(APIView):
 
         model = os.getenv(
             "GEMINI_MODEL",
-            "gemini-3.6-flash"
+            "gemini-3.6-flash",
         )
 
         # -------------------------------------------------
@@ -275,22 +284,40 @@ You have access to:
 Rules:
 
 1. Give educational and study-related assistance.
-2. Personalize recommendations using the student's actual progress.
+
+2. Personalize recommendations using the student's
+   actual progress.
+
 3. If the student has weak topics, prioritize those topics.
-4. If the student asks what to study next, recommend incomplete
-   or weak lessons before unrelated topics.
+
+4. If the student asks what to study next, recommend
+   incomplete or weak lessons before unrelated topics.
+
 5. Explain concepts clearly and at the student's level.
+
 6. Do not invent course progress or scores.
-7. If the requested information is not available in the platform
-   data, clearly say that it is not available.
-8. Do not expose passwords, authentication tokens, API keys,
-   or private system information.
-9. If asked about performance, explain the data rather than
-   making unsupported judgments.
+
+7. If the requested information is not available in
+   the platform data, clearly say that it is not available.
+
+8. Do not expose passwords, authentication tokens,
+   API keys, or private system information.
+
+9. If asked about performance, explain the data rather
+   than making unsupported judgments.
+
 10. When useful, provide a short actionable study plan.
-11. Encourage active learning rather than simply giving answers.
-12. If the student asks for a quiz, create questions based on
-   their available lessons and weak topics.
+
+11. Encourage active learning rather than simply
+    giving answers.
+
+12. If the student asks for a quiz, create questions
+    based on their available lessons and weak topics.
+
+13. Keep responses concise and useful.
+
+14. If the student asks something unrelated to education,
+    politely redirect them toward the learning platform.
 """
 
         # -------------------------------------------------
@@ -316,10 +343,10 @@ STUDENT MESSAGE:
 
 Respond directly to the student.
 
-If the student asks for personalized advice, use their
-progress information.
+If the student asks for personalized advice,
+use their progress information.
 
-Keep the answer clear and useful.
+Keep the answer clear, useful, and student-friendly.
 """
 
         # -------------------------------------------------
@@ -327,7 +354,7 @@ Keep the answer clear and useful.
         # -------------------------------------------------
 
         url = (
-            f"https://generativelanguage.googleapis.com/"
+            "https://generativelanguage.googleapis.com/"
             f"v1beta/models/{model}:generateContent"
         )
 
@@ -352,28 +379,90 @@ Keep the answer clear and useful.
             },
         }
 
-        try:
+        # -------------------------------------------------
+        # 12. RETRY CONFIGURATION
+        # -------------------------------------------------
 
-            gemini_response = requests.post(
-                url,
-                headers=headers,
-                json=payload,
-                timeout=45,
-            )
+        max_retries = 4
 
-        except requests.RequestException as error:
+        gemini_response = None
+
+        for attempt in range(max_retries):
+
+            try:
+
+                gemini_response = requests.post(
+                    url,
+                    headers=headers,
+                    json=payload,
+                    timeout=60,
+                )
+
+                # Successful response
+                if gemini_response.ok:
+                    break
+
+                # Retry only temporary server/rate errors
+                if gemini_response.status_code in (
+                    408,
+                    429,
+                    500,
+                    502,
+                    503,
+                    504,
+                ):
+
+                    if attempt < max_retries - 1:
+
+                        delay = (
+                            (2 ** attempt)
+                            + random.uniform(0, 0.5)
+                        )
+
+                        time.sleep(delay)
+                        continue
+
+                # Non-retryable error
+                break
+
+            except requests.RequestException as error:
+
+                if attempt < max_retries - 1:
+
+                    delay = (
+                        (2 ** attempt)
+                        + random.uniform(0, 0.5)
+                    )
+
+                    time.sleep(delay)
+                    continue
+
+                return Response(
+                    {
+                        "error": (
+                            "Unable to connect to "
+                            "the AI service."
+                        ),
+                        "details": str(error),
+                    },
+                    status=status.HTTP_503_SERVICE_UNAVAILABLE,
+                )
+
+        # -------------------------------------------------
+        # 13. HANDLE GEMINI ERROR
+        # -------------------------------------------------
+
+        if gemini_response is None:
 
             return Response(
                 {
-                    "error": "Unable to connect to the AI service.",
-                    "details": str(error),
+                    "error": (
+                        "The AI service did not "
+                        "return a response."
+                    )
                 },
-                status=status.HTTP_503_SERVICE_UNAVAILABLE
+                status=status.HTTP_502_BAD_GATEWAY,
             )
-
-        # -------------------------------------------------
-        # 12. HANDLE GEMINI ERROR
-        # -------------------------------------------------
 
         if not gemini_response.ok:
 
@@ -384,16 +473,39 @@ Keep the answer clear and useful.
                     "message": gemini_response.text
                 }
 
+            # Specifically explain temporary 503 errors
+            if gemini_response.status_code == 503:
+
+                return Response(
+                    {
+                        "error": (
+                            "Gemini is temporarily "
+                            "unavailable after multiple "
+                            "retry attempts."
+                        ),
+                        "details": error_data,
+                        "model": model,
+                        "suggestion": (
+                            "Please try the message again "
+                            "after a short while."
+                        ),
+                    },
+                    status=status.HTTP_503_SERVICE_UNAVAILABLE,
+                )
+
             return Response(
                 {
-                    "error": "AI service returned an error.",
+                    "error": (
+                        "AI service returned an error."
+                    ),
                     "details": error_data,
+                    "model": model,
                 },
-                status=status.HTTP_502_BAD_GATEWAY
+                status=status.HTTP_502_BAD_GATEWAY,
             )
 
         # -------------------------------------------------
-        # 13. EXTRACT AI RESPONSE
+        # 14. EXTRACT AI RESPONSE
         # -------------------------------------------------
 
         try:
@@ -402,15 +514,19 @@ Keep the answer clear and useful.
 
             candidates = response_data.get(
                 "candidates",
-                []
+                [],
             )
 
             if not candidates:
+
                 return Response(
                     {
-                        "error": "The AI service did not return a response."
+                        "error": (
+                            "The AI service did not "
+                            "return a response."
+                        )
                     },
-                    status=status.HTTP_502_BAD_GATEWAY
+                    status=status.HTTP_502_BAD_GATEWAY,
                 )
 
             parts = (
@@ -429,39 +545,53 @@ Keep the answer clear and useful.
             answer = answer.strip()
 
             if not answer:
+
                 return Response(
                     {
-                        "error": "The AI returned an empty response."
+                        "error": (
+                            "The AI returned an "
+                            "empty response."
+                        )
                     },
-                    status=status.HTTP_502_BAD_GATEWAY
+                    status=status.HTTP_502_BAD_GATEWAY,
                 )
 
-        except (ValueError, KeyError, TypeError):
+        except (
+            ValueError,
+            KeyError,
+            TypeError,
+        ):
 
             return Response(
                 {
-                    "error": "Invalid response received from AI service."
+                    "error": (
+                        "Invalid response received "
+                        "from AI service."
+                    )
                 },
-                status=status.HTTP_502_BAD_GATEWAY
+                status=status.HTTP_502_BAD_GATEWAY,
             )
 
         # -------------------------------------------------
-        # 14. RETURN PERSONALIZED RESPONSE
+        # 15. RETURN PERSONALIZED RESPONSE
         # -------------------------------------------------
 
         return Response(
             {
                 "answer": answer,
                 "student": user.username,
+                "model": model,
                 "performance": {
                     "average_score": average_score,
                     "completed_lessons": completed_count,
                     "tracked_lessons": total_progress,
-                    "weak_topics_count": len(weak_topics),
+                    "weak_topics_count": len(
+                        weak_topics
+                    ),
                     "incomplete_lessons_count": len(
                         incomplete_lessons
                     ),
                 },
             },
-            status=status.HTTP_200_OK
+            status=status.HTTP_200_OK,
         )
