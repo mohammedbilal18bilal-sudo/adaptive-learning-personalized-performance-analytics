@@ -158,6 +158,7 @@ class StudentChatbotView(APIView):
 
                         field_name = field.name
 
+                        # Never expose sensitive information
                         if field_name.lower() in [
                             "password",
                             "secret",
@@ -266,37 +267,17 @@ class StudentChatbotView(APIView):
             )
 
         # ====================================================
-        # GEMINI MODELS
+        # GEMINI MODEL
+        # ====================================================
         #
-        # Primary model:
-        # gemini-3.5-flash-lite
+        # We tested this model directly in Postman and
+        # confirmed that it successfully returned 200 OK.
         #
-        # Fallback:
-        # gemini-2.5-flash-lite
+        # Do NOT use the old gemini-2.5-flash-lite model.
         #
-        # Both are suitable for a lightweight student
-        # chatbot and have free-tier availability.
         # ====================================================
 
-        configured_model = os.getenv("GEMINI_MODEL")
-
-        if configured_model:
-            models_to_try = [
-                configured_model,
-                "gemini-3.5-flash-lite",
-                "gemini-2.5-flash-lite",
-            ]
-        else:
-            models_to_try = [
-                "gemini-3.5-flash-lite",
-                "gemini-2.5-flash-lite",
-            ]
-
-        # Remove duplicate models while preserving order
-
-        models_to_try = list(
-            dict.fromkeys(models_to_try)
-        )
+        model = "gemini-3.5-flash-lite"
 
         # ====================================================
         # STUDENT CONTEXT
@@ -332,6 +313,7 @@ that the information is unavailable and provide a
 general study recommendation.
 
 5. When explaining a topic, provide:
+
 - Simple explanation
 - Example
 - Important points
@@ -355,6 +337,15 @@ learning plan.
 
 12. If the student asks something unrelated to studying,
 answer briefly and politely.
+
+13. If the student asks about their own learning progress,
+use their available student data.
+
+14. If the student asks a general academic question,
+answer using your educational knowledge.
+
+15. Do not expose private system information, API keys,
+tokens, passwords or internal implementation details.
 """
 
         # ====================================================
@@ -378,110 +369,110 @@ answer briefly and politely.
             )
 
         # ====================================================
-        # TRY GEMINI MODELS
+        # GENERATE GEMINI RESPONSE
         # ====================================================
 
         last_error = None
 
-        for model in models_to_try:
+        for attempt in range(2):
 
-            # Try each model up to 2 times for temporary
-            # service-unavailable errors.
+            try:
 
-            for attempt in range(2):
+                response = client.models.generate_content(
+                    model=model,
+                    contents=(
+                        instructions
+                        + "\n\nStudent information:\n\n"
+                        + str(student_context)
+                        + "\n\nStudent question:\n\n"
+                        + message
+                    ),
+                )
 
-                try:
+                answer = getattr(
+                    response,
+                    "text",
+                    None
+                )
 
-                    response = client.models.generate_content(
-                        model=model,
-                        contents=(
-                            instructions
-                            + "\n\nStudent information:\n\n"
-                            + str(student_context)
-                            + "\n\nStudent question:\n\n"
-                            + message
-                        ),
+                # ====================================================
+                # SUCCESS
+                # ====================================================
+
+                if answer and answer.strip():
+
+                    return Response(
+                        {
+                            "message": answer.strip(),
+                            "model": model,
+                        },
+                        status=200,
                     )
 
-                    answer = getattr(
-                        response,
-                        "text",
-                        None
-                    )
+                last_error = (
+                    "Gemini returned an empty response."
+                )
 
-                    if answer and answer.strip():
+                break
 
-                        return Response(
-                            {
-                                "message": answer.strip(),
-                                "model": model,
-                            },
-                            status=200,
-                        )
+            except Exception as gemini_error:
 
-                    last_error = (
-                        f"Gemini returned an empty response "
-                        f"using {model}."
-                    )
+                error_text = str(gemini_error)
+
+                last_error = error_text
+
+                # ====================================================
+                # TEMPORARY SERVICE ERROR
+                # ====================================================
+
+                if (
+                    "503" in error_text
+                    or "UNAVAILABLE" in error_text
+                    or "ServiceUnavailable" in error_text
+                ):
+
+                    if attempt == 0:
+
+                        time.sleep(2)
+                        continue
 
                     break
 
-                except Exception as gemini_error:
+                # ====================================================
+                # RATE LIMIT ERROR
+                # ====================================================
 
-                    error_text = str(gemini_error)
+                if (
+                    "429" in error_text
+                    or "RESOURCE_EXHAUSTED" in error_text
+                ):
 
-                    last_error = error_text
+                    if attempt == 0:
 
-                    # Temporary Gemini availability problem.
-                    # Wait briefly and retry the same model.
-
-                    if (
-                        "503" in error_text
-                        or "UNAVAILABLE" in error_text
-                        or "ServiceUnavailable" in error_text
-                    ):
-
-                        if attempt == 0:
-                            time.sleep(2)
-                            continue
-
-                        # After two attempts, move to the
-                        # fallback model.
-
-                        break
-
-                    # Rate-limit errors can also be temporary.
-
-                    if (
-                        "429" in error_text
-                        or "RESOURCE_EXHAUSTED" in error_text
-                    ):
-
-                        if attempt == 0:
-                            time.sleep(2)
-                            continue
-
-                        break
-
-                    # For authentication or configuration errors,
-                    # don't waste time retrying the same request.
+                        time.sleep(2)
+                        continue
 
                     break
 
-        # ====================================================
-        # ALL MODELS FAILED
-        # ====================================================
+                # ====================================================
+                # AUTHENTICATION / CONFIGURATION / OTHER ERROR
+                # ====================================================
+
+                break
+
+        # ============================================================
+        # GEMINI FAILED
+        # ============================================================
 
         return Response(
             {
                 "error": (
                     "Gemini AI is temporarily unavailable. "
-                    "The chatbot backend is working, but the "
-                    "available Gemini models did not return a "
-                    "response."
+                    "The chatbot backend is working, but "
+                    "Gemini did not return a response."
                 ),
                 "details": last_error,
-                "models_tried": models_to_try,
+                "model": model,
             },
             status=503,
         )
