@@ -107,6 +107,10 @@ class StudentChatbotView(APIView):
 
     permission_classes = [IsAuthenticated]
 
+    # ========================================================
+    # GET MODEL DATA
+    # ========================================================
+
     def get_model_data(self, model_class, user=None, limit=50):
 
         try:
@@ -179,6 +183,10 @@ class StudentChatbotView(APIView):
         except Exception:
             return []
 
+    # ========================================================
+    # BUILD STUDENT CONTEXT
+    # ========================================================
+
     def build_student_context(self, user):
 
         return {
@@ -219,6 +227,10 @@ class StudentChatbotView(APIView):
             ),
         }
 
+    # ========================================================
+    # POST
+    # ========================================================
+
     def post(self, request):
 
         message = request.data.get(
@@ -254,12 +266,36 @@ class StudentChatbotView(APIView):
             )
 
         # ====================================================
-        # GEMINI MODEL
+        # GEMINI MODELS
+        #
+        # Primary model:
+        # gemini-3.5-flash-lite
+        #
+        # Fallback:
+        # gemini-2.5-flash-lite
+        #
+        # Both are suitable for a lightweight student
+        # chatbot and have free-tier availability.
         # ====================================================
 
-        model = os.getenv(
-            "GEMINI_MODEL",
-            "gemini-3.8-flash"
+        configured_model = os.getenv("GEMINI_MODEL")
+
+        if configured_model:
+            models_to_try = [
+                configured_model,
+                "gemini-3.5-flash-lite",
+                "gemini-2.5-flash-lite",
+            ]
+        else:
+            models_to_try = [
+                "gemini-3.5-flash-lite",
+                "gemini-2.5-flash-lite",
+            ]
+
+        # Remove duplicate models while preserving order
+
+        models_to_try = list(
+            dict.fromkeys(models_to_try)
         )
 
         # ====================================================
@@ -322,7 +358,7 @@ answer briefly and politely.
 """
 
         # ====================================================
-        # GEMINI REQUEST WITH AUTOMATIC RETRY
+        # CREATE GEMINI CLIENT
         # ====================================================
 
         try:
@@ -331,10 +367,28 @@ answer briefly and politely.
                 api_key=api_key
             )
 
-            answer = None
-            max_retries = 3
+        except Exception as client_error:
 
-            for attempt in range(max_retries):
+            return Response(
+                {
+                    "error": "Unable to initialize Gemini AI.",
+                    "details": str(client_error),
+                },
+                status=502,
+            )
+
+        # ====================================================
+        # TRY GEMINI MODELS
+        # ====================================================
+
+        last_error = None
+
+        for model in models_to_try:
+
+            # Try each model up to 2 times for temporary
+            # service-unavailable errors.
+
+            for attempt in range(2):
 
                 try:
 
@@ -349,68 +403,85 @@ answer briefly and politely.
                         ),
                     )
 
-                    answer = response.text
+                    answer = getattr(
+                        response,
+                        "text",
+                        None
+                    )
+
+                    if answer and answer.strip():
+
+                        return Response(
+                            {
+                                "message": answer.strip(),
+                                "model": model,
+                            },
+                            status=200,
+                        )
+
+                    last_error = (
+                        f"Gemini returned an empty response "
+                        f"using {model}."
+                    )
+
                     break
 
                 except Exception as gemini_error:
 
                     error_text = str(gemini_error)
 
+                    last_error = error_text
+
+                    # Temporary Gemini availability problem.
+                    # Wait briefly and retry the same model.
+
                     if (
                         "503" in error_text
                         or "UNAVAILABLE" in error_text
+                        or "ServiceUnavailable" in error_text
                     ):
 
-                        if attempt < max_retries - 1:
-
-                            wait_time = 5 * (2 ** attempt)
-
-                            time.sleep(wait_time)
-
+                        if attempt == 0:
+                            time.sleep(2)
                             continue
 
-                    raise gemini_error
+                        # After two attempts, move to the
+                        # fallback model.
 
-            # =================================================
-            # NO ANSWER
-            # =================================================
+                        break
 
-            if answer is None:
+                    # Rate-limit errors can also be temporary.
 
-                return Response(
-                    {
-                        "error": (
-                            "Gemini service is temporarily "
-                            "unavailable. Please try again later."
-                        ),
-                        "model": model,
-                    },
-                    status=503,
-                )
+                    if (
+                        "429" in error_text
+                        or "RESOURCE_EXHAUSTED" in error_text
+                    ):
 
-            # =================================================
-            # SUCCESS
-            # =================================================
+                        if attempt == 0:
+                            time.sleep(2)
+                            continue
 
-            return Response(
-                {
-                    "message": answer,
-                    "model": model,
-                },
-                status=200,
-            )
+                        break
+
+                    # For authentication or configuration errors,
+                    # don't waste time retrying the same request.
+
+                    break
 
         # ====================================================
-        # GEMINI ERROR
+        # ALL MODELS FAILED
         # ====================================================
 
-        except Exception as e:
-
-            return Response(
-                {
-                    "error": "Gemini AI service returned an error.",
-                    "details": str(e),
-                    "model": model,
-                },
-                status=502,
-            )
+        return Response(
+            {
+                "error": (
+                    "Gemini AI is temporarily unavailable. "
+                    "The chatbot backend is working, but the "
+                    "available Gemini models did not return a "
+                    "response."
+                ),
+                "details": last_error,
+                "models_tried": models_to_try,
+            },
+            status=503,
+        )
