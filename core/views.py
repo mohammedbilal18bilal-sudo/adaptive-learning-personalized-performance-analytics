@@ -641,11 +641,13 @@ questions about the student's own courses, progress,
 lessons and assessments.
 """
 
+        # Use a bounded timeout and disable SDK-internal retries so that
+        # our explicit, short retry loop stays inside Gunicorn's request window.
         try:
             client = genai.Client(
                 api_key=api_key,
                 http_options=types.HttpOptions(
-                    timeout=10000,
+                    timeout=6500,
                     retry_options=types.HttpRetryOptions(
                         attempts=1,
                         http_status_codes=[408, 429, 500, 502, 503, 504],
@@ -659,9 +661,7 @@ lessons and assessments.
                 str(client_error)[:500],
             )
             return Response(
-                {
-                    "error": "Unable to initialize Gemini AI. Please try again shortly.",
-                },
+                {"error": "Unable to initialize Gemini AI. Please try again shortly."},
                 status=502,
             )
 
@@ -673,87 +673,119 @@ lessons and assessments.
             + message
         )
 
-        last_error = "No Gemini model returned a response."
+        # Flash-Lite remains primary. If Google has a transient outage,
+        # retry once with a short backoff, then try the proven Flash model.
+        # At most two attempts per model keeps the request bounded.
         model_failures = []
+        transient_markers = (
+            "503", "unavailable", "serviceunavailable",
+            "504", "deadline_exceeded", "timeout", "timed out",
+            "429", "resource_exhausted", "408",
+            "500", "502", "internal server error",
+        )
 
         for model in models_to_try:
-            try:
-                print(f"Learn Smart trying Gemini model: {model}")
-
-                response = client.models.generate_content(
-                    model=model,
-                    contents=prompt,
-                    config=types.GenerateContentConfig(
-                        max_output_tokens=1200,
-                        thinking_config=types.ThinkingConfig(
-                            thinking_level="low"
-                        ),
-                    ),
-                )
-
-                answer = getattr(response, "text", None)
-
-                if answer and answer.strip():
-                    print(f"Learn Smart succeeded with model: {model}")
-                    return Response(
-                        {
-                            "message": answer.strip(),
-                            "model": model,
-                        },
-                        status=200,
-                    )
-
-                finish_reason = None
+            for attempt in range(2):
                 try:
-                    if response.candidates:
-                        finish_reason = str(
-                            response.candidates[0].finish_reason
-                        )
-                except Exception:
-                    pass
-
-                last_error = (
-                    f"Gemini returned no usable text using {model}; "
-                    f"finish_reason={finish_reason}"
-                )
-                model_failures.append(last_error)
-                print(last_error)
-
-            except Exception as gemini_error:
-                error_text = str(gemini_error)
-                last_error = (
-                    f"{model}: {type(gemini_error).__name__}: "
-                    f"{error_text[:400]}"
-                )
-                model_failures.append(last_error)
-
-                print("Learn Smart Gemini error:", last_error)
-
-                lower_error = error_text.lower()
-
-                if (
-                    "api_key_invalid" in lower_error
-                    or "api key not valid" in lower_error
-                    or ("401" in lower_error and "model" not in lower_error)
-                ):
-                    return Response(
-                        {
-                            "error": "Gemini rejected the API key configured on Render.",
-                        },
-                        status=502,
+                    print(
+                        f"Learn Smart trying Gemini model: {model} "
+                        f"(attempt {attempt + 1}/2)"
                     )
 
-                continue
+                    response = client.models.generate_content(
+                        model=model,
+                        contents=prompt,
+                        config=types.GenerateContentConfig(
+                            max_output_tokens=900,
+                            temperature=0.5,
+                            thinking_config=types.ThinkingConfig(
+                                thinking_level="low"
+                            ),
+                        ),
+                    )
+
+                    answer = getattr(response, "text", None)
+                    if answer and answer.strip():
+                        print(f"Learn Smart succeeded with model: {model}")
+                        return Response(
+                            {"message": answer.strip(), "model": model},
+                            status=200,
+                        )
+
+                    finish_reason = "unknown"
+                    try:
+                        if response.candidates:
+                            finish_reason = str(
+                                response.candidates[0].finish_reason
+                            )
+                    except Exception:
+                        pass
+
+                    failure = (
+                        f"{model} attempt {attempt + 1}: Gemini returned "
+                        f"no usable text (finish_reason={finish_reason})."
+                    )
+                    model_failures.append(failure)
+                    print(failure)
+
+                    # Empty/limited output may be transient. Make one short retry.
+                    if attempt == 0:
+                        time.sleep(0.5)
+                        continue
+                    break
+
+                except Exception as gemini_error:
+                    error_text = str(gemini_error)
+                    lower_error = error_text.lower()
+                    failure = (
+                        f"{model} attempt {attempt + 1}: "
+                        f"{type(gemini_error).__name__}: {error_text[:350]}"
+                    )
+                    model_failures.append(failure)
+                    print("Learn Smart Gemini error:", failure)
+
+                    # Invalid credentials are not fixed by retrying or changing models.
+                    if (
+                        "api_key_invalid" in lower_error
+                        or "api key not valid" in lower_error
+                        or ("401" in lower_error and "model" not in lower_error)
+                    ):
+                        return Response(
+                            {"error": "Gemini rejected the API key configured on Render."},
+                            status=502,
+                        )
+
+                    # Do not retry definite model-not-found/client errors;
+                    # continue directly to the next configured model.
+                    if (
+                        "404" in lower_error
+                        or "not_found" in lower_error
+                        or "invalid_argument" in lower_error
+                        or "400" in lower_error
+                        or "403" in lower_error
+                    ):
+                        break
+
+                    is_transient = any(
+                        marker in lower_error for marker in transient_markers
+                    )
+                    if attempt == 0 and is_transient:
+                        time.sleep(0.5)
+                        continue
+
+                    # Try the next model after the second failure or any
+                    # non-transient provider error.
+                    break
 
         return Response(
             {
                 "error": (
                     "Learn Smart could not get a response from Gemini. "
-                    "The primary model and fallback models did not respond. "
-                    "Please try again shortly."
+                    "The models were retried once, but the Gemini service "
+                    "did not return a usable response. Please retry shortly."
                 ),
                 "models_tried": models_to_try,
-                "details": model_failures or [last_error],
+                "details": model_failures,
             },
             status=503,
         )
