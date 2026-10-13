@@ -1,5 +1,4 @@
 import os
-import time
 
 from django.db.models import Avg
 
@@ -480,10 +479,12 @@ class StudentChatbotView(APIView):
                 status=500
             )
 
+        # Keep Flash-Lite as the preferred model. Gemini 2.5
+        # Flash-Lite is unavailable to this API project, so do
+        # not include it as a fallback.
         models_to_try = [
             "gemini-3.5-flash-lite",
-            "gemini-3.8-flash",
-            "gemini-2.5-flash-lite",
+            "gemini-3.6-flash",
         ]
 
         try:
@@ -639,21 +640,17 @@ questions about the student's own courses, progress,
 lessons and assessments.
 """
 
+        # The Google endpoint rejected the former 6.5-second deadline.
+        # Use 12 seconds (above the documented 10-second minimum), and
+        # try each of the two configured models once so a request stays
+        # within the usual Render/Gunicorn request window.
         try:
             client = genai.Client(
                 api_key=api_key,
                 http_options=types.HttpOptions(
-                    # Keep requests bounded so a slow Gemini call
-                    # does not hold a Render sync worker indefinitely.
-                    timeout=6000,
-                    # Two total attempts = one short retry for temporary
-                    # 408/429/5xx errors, including Gemini 503 and 504.
+                    timeout=12000,
                     retry_options=types.HttpRetryOptions(
-                        attempts=2,
-                        initial_delay=0.5,
-                        max_delay=1.5,
-                        exp_base=2.0,
-                        jitter=0.2,
+                        attempts=1,
                         http_status_codes=[408, 429, 500, 502, 503, 504],
                     ),
                 ),
@@ -665,9 +662,7 @@ lessons and assessments.
                 str(client_error)[:500],
             )
             return Response(
-                {
-                    "error": "Unable to initialize Gemini AI. Please try again shortly.",
-                },
+                {"error": "Unable to initialize Gemini AI. Please try again shortly."},
                 status=502,
             )
 
@@ -679,7 +674,10 @@ lessons and assessments.
             + message
         )
 
-        last_error = "No Gemini model returned a response."
+        # Flash-Lite remains primary. If it fails, attempt the tested
+        # Gemini 3.6 Flash model. Each model is requested once to avoid
+        # letting one slow request exceed Render's worker time limit.
+        model_failures = []
 
         for model in models_to_try:
             try:
@@ -689,57 +687,70 @@ lessons and assessments.
                     model=model,
                     contents=prompt,
                     config=types.GenerateContentConfig(
-                        max_output_tokens=500,
-                        temperature=0.5,
+                        max_output_tokens=900,
+                        thinking_config=types.ThinkingConfig(
+                            thinking_level="low"
+                        ),
                     ),
                 )
 
                 answer = getattr(response, "text", None)
-
                 if answer and answer.strip():
                     print(f"Learn Smart succeeded with model: {model}")
                     return Response(
-                        {
-                            "message": answer.strip(),
-                            "model": model,
-                        },
+                        {"message": answer.strip(), "model": model},
                         status=200,
                     )
 
-                last_error = f"Gemini returned an empty response using {model}."
-                print(last_error)
+                finish_reason = "unknown"
+                try:
+                    if response.candidates:
+                        finish_reason = str(
+                            response.candidates[0].finish_reason
+                        )
+                except Exception:
+                    pass
+
+                failure = (
+                    f"{model}: Gemini returned no usable text "
+                    f"(finish_reason={finish_reason})."
+                )
+                model_failures.append(failure)
+                print(failure)
 
             except Exception as gemini_error:
                 error_text = str(gemini_error)
-                last_error = f"{model}: {type(gemini_error).__name__}: {error_text[:400]}"
-
-                print("Learn Smart Gemini error:", last_error)
-
                 lower_error = error_text.lower()
+                failure = (
+                    f"{model}: {type(gemini_error).__name__}: "
+                    f"{error_text[:350]}"
+                )
+                model_failures.append(failure)
+                print("Learn Smart Gemini error:", failure)
 
+                # An invalid API key will also fail with the fallback.
                 if (
                     "api_key_invalid" in lower_error
                     or "api key not valid" in lower_error
                     or ("401" in lower_error and "model" not in lower_error)
                 ):
                     return Response(
-                        {
-                            "error": "Gemini rejected the API key configured on Render.",
-                        },
+                        {"error": "Gemini rejected the API key configured on Render."},
                         status=502,
                     )
 
+                # For other errors, move to the next configured model.
                 continue
 
         return Response(
             {
                 "error": (
                     "Learn Smart could not get a response from Gemini. "
-                    "The primary model and fallback models did not respond. "
-                    "Please try again shortly."
+                    "The available Gemini models were tried, but Gemini did not "
+                    "return a usable response. Please retry shortly."
                 ),
                 "models_tried": models_to_try,
-                "details": last_error,
+                "details": model_failures,
             },
             status=503,
         )
