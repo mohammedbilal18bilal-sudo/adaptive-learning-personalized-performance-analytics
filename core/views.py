@@ -479,11 +479,11 @@ class StudentChatbotView(APIView):
                 status=500
             )
 
-        # Keep Flash-Lite as the preferred model. Gemini 2.5
-        # Flash-Lite is unavailable to this API project, so do
-        # not include it as a fallback.
+        # The direct Postman test confirmed this model returned 200 OK.
+        # Try it first, then use the other tested models as fallbacks.
+        # Do not use Gemini 2.5 Flash-Lite; this API project returned 404.
         models_to_try = [
-            "gemini-3.5-flash-lite",
+            "gemini-3.1-flash-lite",
             "gemini-3.6-flash",
         ]
 
@@ -640,15 +640,15 @@ questions about the student's own courses, progress,
 lessons and assessments.
 """
 
-        # The Google endpoint rejected the former 6.5-second deadline.
-        # Use 12 seconds (above the documented 10-second minimum), and
-        # try each of the two configured models once so a request stays
-        # within the usual Render/Gunicorn request window.
+        # The direct Gemini 3.1 Flash-Lite test returned 200 OK but took
+        # about 32 seconds. Give the HTTP request a 45-second limit, and
+        # configure Gunicorn on Render with --timeout 90 (instructions
+        # provided separately) so the worker is not killed first.
         try:
             client = genai.Client(
                 api_key=api_key,
                 http_options=types.HttpOptions(
-                    timeout=12000,
+                    timeout=45000,
                     retry_options=types.HttpRetryOptions(
                         attempts=1,
                         http_status_codes=[408, 429, 500, 502, 503, 504],
@@ -674,9 +674,9 @@ lessons and assessments.
             + message
         )
 
-        # Flash-Lite remains primary. If it fails, attempt the tested
-        # Gemini 3.6 Flash model. Each model is requested once to avoid
-        # letting one slow request exceed Render's worker time limit.
+        # Try the model confirmed successful in direct Postman first.
+        # Keep model-level attempts bounded; move to the next model if
+        # Google reports an error or no usable text is returned.
         model_failures = []
 
         for model in models_to_try:
@@ -687,9 +687,9 @@ lessons and assessments.
                     model=model,
                     contents=prompt,
                     config=types.GenerateContentConfig(
-                        max_output_tokens=900,
+                        max_output_tokens=600,
                         thinking_config=types.ThinkingConfig(
-                            thinking_level="low"
+                            thinking_level="minimal"
                         ),
                     ),
                 )
