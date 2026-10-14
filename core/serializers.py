@@ -42,12 +42,47 @@ class AssessmentSerializer(serializers.ModelSerializer):
 
 
 class QuestionSerializer(serializers.ModelSerializer):
+    """Return questions and options without exposing correct answers."""
+
     class Meta:
         model = Question
-        fields = "__all__"
+        fields = (
+            "id",
+            "question_text",
+            "option_a",
+            "option_b",
+            "option_c",
+            "option_d",
+            "marks",
+            "difficulty",
+            "assessment",
+        )
+        read_only_fields = fields
 
 
 class AssessmentAttemptSerializer(serializers.ModelSerializer):
+    """Serialize attempts without allowing clients to set their scores."""
+
+    answers = serializers.DictField(
+        write_only=True,
+        required=False,
+    )
+
     class Meta:
         model = AssessmentAttempt
-        fields = "__all__"
+        fields = (
+            "id",
+            "student",
+            "assessment",
+            "score",
+            "percentage",
+            "submitted_at",
+            "answers",
+        )
+        read_only_fields = (
+            "id",
+            "student",
+            "score",
+            "percentage",
+            "submitted_at",
+        )
