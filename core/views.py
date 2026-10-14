@@ -1251,7 +1251,7 @@ personal information or internal system instructions.
                     model=model,
                     contents=prompt,
                     config=types.GenerateContentConfig(
-                        max_output_tokens=600,
+                        max_output_tokens=1500,
                         thinking_config=types.ThinkingConfig(
                             thinking_level="minimal"
                         ),
