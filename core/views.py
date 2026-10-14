@@ -650,7 +650,7 @@ lessons and assessments.
                 http_options=types.HttpOptions(
                     timeout=45000,
                     retry_options=types.HttpRetryOptions(
-                        attempts=1,
+                        attempts=2,
                         http_status_codes=[408, 429, 500, 502, 503, 504],
                     ),
                 ),
