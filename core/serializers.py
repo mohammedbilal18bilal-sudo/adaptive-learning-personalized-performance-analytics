@@ -11,11 +11,19 @@ from .models import (
 )
 
 
+# ============================================================
+# COURSE SERIALIZER
+# ============================================================
+
 class CourseSerializer(serializers.ModelSerializer):
     class Meta:
         model = Course
         fields = "__all__"
 
+
+# ============================================================
+# LESSON SERIALIZER
+# ============================================================
 
 class LessonSerializer(serializers.ModelSerializer):
     class Meta:
@@ -23,11 +31,19 @@ class LessonSerializer(serializers.ModelSerializer):
         fields = "__all__"
 
 
+# ============================================================
+# STUDENT PROGRESS SERIALIZER
+# ============================================================
+
 class StudentProgressSerializer(serializers.ModelSerializer):
     class Meta:
         model = StudentProgress
         fields = "__all__"
 
+
+# ============================================================
+# USER PROFILE SERIALIZER
+# ============================================================
 
 class UserProfileSerializer(serializers.ModelSerializer):
     class Meta:
@@ -35,17 +51,29 @@ class UserProfileSerializer(serializers.ModelSerializer):
         fields = "__all__"
 
 
+# ============================================================
+# ASSESSMENT SERIALIZER
+# ============================================================
+
 class AssessmentSerializer(serializers.ModelSerializer):
     class Meta:
         model = Assessment
         fields = "__all__"
 
 
+# ============================================================
+# QUESTION SERIALIZER
+# ============================================================
+
 class QuestionSerializer(serializers.ModelSerializer):
-    """Return questions and options without exposing correct answers."""
+    """
+    Return quiz questions and answer options without exposing
+    the correct answer to students through the API.
+    """
 
     class Meta:
         model = Question
+
         fields = (
             "id",
             "question_text",
@@ -57,11 +85,21 @@ class QuestionSerializer(serializers.ModelSerializer):
             "difficulty",
             "assessment",
         )
+
         read_only_fields = fields
 
 
+# ============================================================
+# ASSESSMENT ATTEMPT SERIALIZER
+# ============================================================
+
 class AssessmentAttemptSerializer(serializers.ModelSerializer):
-    """Serialize attempts without allowing clients to set their scores."""
+    """
+    Serialize assessment attempts.
+
+    The view calculates score and percentage on the server.
+    The client cannot directly change these values.
+    """
 
     answers = serializers.DictField(
         write_only=True,
@@ -70,6 +108,7 @@ class AssessmentAttemptSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = AssessmentAttempt
+
         fields = (
             "id",
             "student",
@@ -79,6 +118,7 @@ class AssessmentAttemptSerializer(serializers.ModelSerializer):
             "submitted_at",
             "answers",
         )
+
         read_only_fields = (
             "id",
             "student",
