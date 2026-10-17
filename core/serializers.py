@@ -10,12 +10,15 @@ from .models import (
     AssessmentAttempt,
 )
 
+from .permissions import get_user_role
+
 
 # ============================================================
 # COURSE SERIALIZER
 # ============================================================
 
 class CourseSerializer(serializers.ModelSerializer):
+
     class Meta:
         model = Course
         fields = "__all__"
@@ -26,6 +29,7 @@ class CourseSerializer(serializers.ModelSerializer):
 # ============================================================
 
 class LessonSerializer(serializers.ModelSerializer):
+
     class Meta:
         model = Lesson
         fields = "__all__"
@@ -36,9 +40,31 @@ class LessonSerializer(serializers.ModelSerializer):
 # ============================================================
 
 class StudentProgressSerializer(serializers.ModelSerializer):
+    """
+    Students can manage their own progress records.
+
+    They cannot assign a progress record to another student.
+    Faculty and administrators can manage progress records
+    for teaching and administrative purposes.
+    """
+
     class Meta:
         model = StudentProgress
         fields = "__all__"
+
+    def get_fields(self):
+
+        fields = super().get_fields()
+        request = self.context.get("request")
+
+        if (
+            request
+            and request.user.is_authenticated
+            and get_user_role(request.user) == "student"
+        ):
+            fields["student"].read_only = True
+
+        return fields
 
 
 # ============================================================
@@ -46,9 +72,34 @@ class StudentProgressSerializer(serializers.ModelSerializer):
 # ============================================================
 
 class UserProfileSerializer(serializers.ModelSerializer):
+    """
+    Only administrators can change profile ownership or roles.
+    """
+
     class Meta:
         model = UserProfile
         fields = "__all__"
+
+    def get_fields(self):
+
+        fields = super().get_fields()
+        request = self.context.get("request")
+
+        is_admin = (
+            request is not None
+            and request.user.is_authenticated
+            and get_user_role(request.user) == "admin"
+        )
+
+        if not is_admin:
+
+            if "user" in fields:
+                fields["user"].read_only = True
+
+            if "role" in fields:
+                fields["role"].read_only = True
+
+        return fields
 
 
 # ============================================================
@@ -56,6 +107,7 @@ class UserProfileSerializer(serializers.ModelSerializer):
 # ============================================================
 
 class AssessmentSerializer(serializers.ModelSerializer):
+
     class Meta:
         model = Assessment
         fields = "__all__"
@@ -67,8 +119,7 @@ class AssessmentSerializer(serializers.ModelSerializer):
 
 class QuestionSerializer(serializers.ModelSerializer):
     """
-    Return quiz questions and answer options without exposing
-    the correct answer to students through the API.
+    Never expose correct_option through the questions API.
     """
 
     class Meta:
@@ -95,10 +146,9 @@ class QuestionSerializer(serializers.ModelSerializer):
 
 class AssessmentAttemptSerializer(serializers.ModelSerializer):
     """
-    Serialize assessment attempts.
+    The backend calculates scores and percentages.
 
-    The view calculates score and percentage on the server.
-    The client cannot directly change these values.
+    Clients cannot directly submit or modify scores.
     """
 
     answers = serializers.DictField(
