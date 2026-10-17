@@ -41,11 +41,15 @@ class LessonSerializer(serializers.ModelSerializer):
 
 class StudentProgressSerializer(serializers.ModelSerializer):
     """
-    Students can manage their own progress records.
+    Students can update their own lesson progress.
 
-    They cannot assign a progress record to another student.
-    Faculty and administrators can manage progress records
-    for teaching and administrative purposes.
+    Students cannot:
+    - Assign progress to another student.
+    - Directly modify their recorded score.
+    - Directly modify their recorded attempt count.
+
+    Faculty and administrators retain the ability to manage
+    progress records through the permitted API endpoints.
     """
 
     class Meta:
@@ -63,6 +67,8 @@ class StudentProgressSerializer(serializers.ModelSerializer):
             and get_user_role(request.user) == "student"
         ):
             fields["student"].read_only = True
+            fields["score"].read_only = True
+            fields["attempts"].read_only = True
 
         return fields
 
@@ -73,7 +79,7 @@ class StudentProgressSerializer(serializers.ModelSerializer):
 
 class UserProfileSerializer(serializers.ModelSerializer):
     """
-    Only administrators can change profile ownership or roles.
+    Only administrators may modify profile ownership or roles.
     """
 
     class Meta:
@@ -146,9 +152,10 @@ class QuestionSerializer(serializers.ModelSerializer):
 
 class AssessmentAttemptSerializer(serializers.ModelSerializer):
     """
-    The backend calculates scores and percentages.
+    Assessment scores are calculated by the backend.
 
-    Clients cannot directly submit or modify scores.
+    Clients cannot directly submit or modify their scores,
+    percentages, submission timestamps, or student identity.
     """
 
     answers = serializers.DictField(
