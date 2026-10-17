@@ -12,6 +12,12 @@ from .views import (
     StudentChatbotView,
 )
 
+from .streaks import UserStreakView
+
+
+# ============================================================
+# API ROUTER
+# ============================================================
 
 router = DefaultRouter()
 
@@ -24,16 +30,29 @@ router.register(r'questions', QuestionViewSet)
 router.register(r'attempts', AssessmentAttemptViewSet)
 
 
+# ============================================================
+# URL PATTERNS
+# ============================================================
+
 urlpatterns = [
 
+    # Existing course, lesson, assessment and other APIs
     path(
         '',
         include(router.urls)
     ),
 
+    # Existing Learn Smart chatbot
     path(
         'chatbot/',
         StudentChatbotView.as_view(),
         name='student-chatbot'
+    ),
+
+    # NEW: Authenticated student and faculty streak API
+    path(
+        'streaks/',
+        UserStreakView.as_view(),
+        name='user-streaks'
     ),
 ]
