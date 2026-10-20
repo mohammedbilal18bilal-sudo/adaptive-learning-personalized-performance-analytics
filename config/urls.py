@@ -11,6 +11,7 @@ urlpatterns = [
     path('admin/', admin.site.urls),
 
     path('api/', include('core.urls')),
+    path('api/problem-solving/', include('problem_solving.urls')),
 
     path(
         'api/token/',
