@@ -2,35 +2,61 @@ import React, { lazy, Suspense, useState } from "react";
 
 import Login from "./pages/login";
 import Dashboard from "./pages/Dashboard";
+import "./App.css";
 
-const FacultyDashboard = lazy(
-  () => import("./pages/FacultyDashboard")
+const FacultyDashboard = lazy(() =>
+  import("./pages/FacultyDashboard")
 );
 
-const AdminDashboard = lazy(
-  () => import("./pages/AdminDashboard")
+const AdminDashboard = lazy(() =>
+  import("./pages/AdminDashboard")
 );
+
+function LoadingScreen({ role }) {
+  return (
+    <div className="app-loading-screen">
+      <div className="loading-card">
+        <div className="loading-logo">L</div>
+
+        <h1 className="loading-brand">
+          Learn<span>Smart</span>
+        </h1>
+
+        <p className="loading-description">
+          Adaptive Learning &amp; Performance Analytics
+        </p>
+
+        <div className="loading-spinner"></div>
+
+        <h2>Loading {role}</h2>
+
+        <p className="loading-message">
+          Preparing your personalized experience...
+        </p>
+      </div>
+    </div>
+  );
+}
 
 function App() {
-  const [isLoggedIn, setIsLoggedIn] = useState(() => {
-    return Boolean(localStorage.getItem("accessToken"));
-  });
+  const [isLoggedIn, setIsLoggedIn] = useState(() =>
+    Boolean(localStorage.getItem("accessToken"))
+  );
 
-  const [userRole, setUserRole] = useState(() => {
-    return localStorage.getItem("userRole") || "";
-  });
+  const [userRole, setUserRole] = useState(() =>
+    (localStorage.getItem("userRole") || "").toLowerCase()
+  );
 
-  const handleLogin = () => {
-    const role = localStorage.getItem("userRole") || "";
-
-    console.log("APP: LOGIN SUCCESS");
-    console.log("APP: USER ROLE =", role);
+  function handleLogin() {
+    const role = (
+      localStorage.getItem("userRole") || ""
+    ).toLowerCase();
 
     setUserRole(role);
     setIsLoggedIn(true);
-  };
+  }
 
-  const handleLogout = () => {
+  function handleLogout() {
     localStorage.removeItem("accessToken");
     localStorage.removeItem("refreshToken");
     localStorage.removeItem("username");
@@ -38,94 +64,37 @@ function App() {
 
     setUserRole("");
     setIsLoggedIn(false);
-  };
+  }
 
-  console.log("APP RENDER:", {
-    isLoggedIn,
-    userRole,
-    hasToken: Boolean(
-      localStorage.getItem("accessToken")
-    ),
-  });
-
-  /*
-   * LOGIN PAGE
-   */
   if (!isLoggedIn) {
     return <Login onLogin={handleLogin} />;
   }
 
-  /*
-   * STUDENT DASHBOARD
-   */
   if (userRole === "student") {
-    return (
-      <Dashboard
-        onLogout={handleLogout}
-      />
-    );
+    return <Dashboard onLogout={handleLogout} />;
   }
 
-  /*
-   * FACULTY DASHBOARD
-   */
   if (userRole === "faculty") {
     return (
       <Suspense
-        fallback={
-          <div
-            style={{
-              minHeight: "100vh",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              fontFamily: "Arial",
-              fontSize: "20px",
-            }}
-          >
-            Loading Faculty Dashboard...
-          </div>
-        }
+        fallback={<LoadingScreen role="Faculty Dashboard" />}
       >
-        <FacultyDashboard
-          onLogout={handleLogout}
-        />
+        <FacultyDashboard onLogout={handleLogout} />
       </Suspense>
     );
   }
 
-  /*
-   * ADMIN DASHBOARD
-   */
   if (userRole === "admin") {
     return (
       <Suspense
-        fallback={
-          <div
-            style={{
-              minHeight: "100vh",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              fontFamily: "Arial",
-              fontSize: "20px",
-            }}
-          >
-            Loading Admin Dashboard...
-          </div>
-        }
+        fallback={<LoadingScreen role="Admin Dashboard" />}
       >
-        <AdminDashboard
-          onLogout={handleLogout}
-        />
+        <AdminDashboard onLogout={handleLogout} />
       </Suspense>
     );
   }
 
-  /*
-   * IF SOMETHING IS WRONG WITH THE STORED ROLE,
-   * CLEAR LOGIN AND RETURN TO LOGIN PAGE.
-   */
+  // Unknown role: return to login
   localStorage.removeItem("accessToken");
   localStorage.removeItem("refreshToken");
   localStorage.removeItem("username");

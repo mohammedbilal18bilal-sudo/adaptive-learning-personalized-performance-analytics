@@ -11,6 +11,8 @@ function Dashboard({ onLogout }) {
   const [assessments, setAssessments] = useState([]);
   const [attempts, setAttempts] = useState([]);
   const [profile, setProfile] = useState(null);
+  const [streak, setStreak] = useState(null);
+  const [streakUnavailable, setStreakUnavailable] = useState(false);
 
   const [selectedCourse, setSelectedCourse] = useState(null);
   const [selectedAssessment, setSelectedAssessment] = useState(null);
@@ -20,6 +22,13 @@ function Dashboard({ onLogout }) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [refreshing, setRefreshing] = useState(false);
+
+  const [chatOpen, setChatOpen] = useState(false);
+  const [chatInput, setChatInput] = useState("");
+  const [chatMessages, setChatMessages] = useState([
+    { role: "assistant", text: "Hi! I’m LearnSmart AI. Ask me about your courses, lessons, progress, or assessments." },
+  ]);
+  const [chatSending, setChatSending] = useState(false);
 
   const token = localStorage.getItem("accessToken");
   const username = localStorage.getItem("username") || "Student";
@@ -143,6 +152,25 @@ function Dashboard({ onLogout }) {
       setAssessments(assessmentList);
       setAttempts(attemptList);
       setProfile(currentProfile);
+
+      // Streak data is optional: a missing streak endpoint must not
+      // prevent the rest of the dashboard from loading.
+      try {
+        const streakResponse = await fetch(`${API_BASE_URL}/streaks/`, {
+          headers,
+        });
+        if (streakResponse.ok) {
+          setStreak(await streakResponse.json());
+          setStreakUnavailable(false);
+        } else {
+          setStreak(null);
+          setStreakUnavailable(true);
+        }
+      } catch (streakFetchError) {
+        console.warn("Streak API unavailable:", streakFetchError);
+        setStreak(null);
+        setStreakUnavailable(true);
+      }
 
       console.log("REAL COURSES:", courseList);
       console.log("REAL LESSONS:", lessonList);
@@ -432,6 +460,35 @@ function Dashboard({ onLogout }) {
    * LOADING
    * ---------------------------------------------------------
    */
+
+
+  const sendChatMessage = async (event) => {
+    if (event) event.preventDefault();
+    const message = chatInput.trim();
+    if (!message || chatSending) return;
+    setChatMessages((previous) => [...previous, { role: "user", text: message }]);
+    setChatInput("");
+    setChatSending(true);
+    try {
+      const response = await fetch(`${API_BASE_URL}/chatbot/`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${localStorage.getItem("accessToken") || ""}`,
+        },
+        body: JSON.stringify({ message }),
+      });
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        throw new Error(data.error || data.detail || `Chatbot request failed (${response.status}).`);
+      }
+      setChatMessages((previous) => [...previous, { role: "assistant", text: data.message || "I couldn't generate a reply. Please try again." }]);
+    } catch (error) {
+      setChatMessages((previous) => [...previous, { role: "assistant", text: `Sorry, I couldn't connect to the chatbot. ${error.message || "Check your login and backend connection."}` }]);
+    } finally {
+      setChatSending(false);
+    }
+  };
 
   if (loading) {
     return (
@@ -1431,6 +1488,277 @@ function Dashboard({ onLogout }) {
             align-items: flex-start;
           }
         }
+
+        /* LearnSmart student workspace — warm editorial visual system */
+        .ls-app {
+          --ls-ink: #20372d;
+          --ls-muted: #778379;
+          --ls-paper: #f6f5ef;
+          --ls-green: #244b3a;
+          --ls-green-deep: #18392c;
+          --ls-lime: #d8e5a6;
+          --ls-orange: #d9824b;
+          background: var(--ls-paper);
+          color: var(--ls-ink);
+          font-family: Inter, "Segoe UI", Arial, sans-serif;
+        }
+        .ls-sidebar {
+          width: 252px;
+          background: var(--ls-green-deep);
+          color: #f7f5eb;
+          border-right: 0;
+          padding: 30px 18px;
+        }
+        .ls-logo { padding: 0 10px; margin-bottom: 52px; }
+        .ls-logo-box {
+          width: 48px; height: 48px; border-radius: 14px;
+          background: var(--ls-lime); color: var(--ls-green-deep);
+          box-shadow: none; font-size: 25px;
+        }
+        .ls-logo-title { color: #fbf8ed; letter-spacing: -0.7px; }
+        .ls-logo-subtitle { color: #b8c7b9; }
+        .ls-menu-title { color: #91a99a; letter-spacing: 1.6px; font-size: 10px; }
+        .ls-nav-button { color: #d2ddd3; border-radius: 10px; padding: 13px 14px; }
+        .ls-nav-button:hover { background: #2c5140; color: #fff; }
+        .ls-nav-button.active { background: var(--ls-lime); color: var(--ls-green-deep); }
+        .ls-help-card { background: #254737; border: 1px solid #42624f; border-radius: 14px; }
+        .ls-help-icon { background: var(--ls-lime); color: var(--ls-green-deep); }
+        .ls-help-card p { color: #c0d0c2; }
+        .ls-main { background: var(--ls-paper); }
+        .ls-topbar {
+          background: rgba(246,245,239,.96); border-bottom: 1px solid #e4e6dc;
+          padding: 0 38px; backdrop-filter: blur(12px);
+        }
+        .ls-search { background: #fff; border: 1px solid #e0e4d9; border-radius: 10px; height: 48px; }
+        .ls-search input { color: var(--ls-ink); }
+        .ls-refresh { background: #e7eddd; color: var(--ls-green); border-radius: 12px; }
+        .ls-user { border: 1px solid #e0e4d9; border-radius: 12px; background: #fff; }
+        .ls-avatar { background: var(--ls-green); color: #fff; }
+        .ls-user-name { color: var(--ls-ink); }
+        .ls-user-role { color: var(--ls-muted); text-transform: capitalize; }
+        .ls-content { padding: 38px; }
+        .ls-welcome {
+          min-height: 240px; border-radius: 18px; padding: 38px 42px;
+          background: var(--ls-green); color: #fff; box-shadow: none;
+          position: relative; overflow: hidden;
+        }
+        .ls-welcome::after {
+          content: ""; position: absolute; width: 310px; height: 310px;
+          right: 140px; top: -190px; border: 1px solid rgba(216,229,166,.3);
+          border-radius: 50%; pointer-events: none;
+        }
+        .ls-eyebrow { color: var(--ls-lime); letter-spacing: 2.4px; font-size: 10px; }
+        .ls-welcome h1 {
+          font-family: Georgia, "Times New Roman", serif; font-weight: 500;
+          letter-spacing: -1.1px; font-size: clamp(30px, 3vw, 42px); max-width: 650px;
+        }
+        .ls-welcome p { color: #d7e1d6; line-height: 1.7; max-width: 490px; }
+        .ls-welcome-box {
+          border: 1px solid rgba(216,229,166,.42); background: #2c5944;
+          border-radius: 16px; width: 205px; height: 145px; z-index: 1;
+        }
+        .ls-welcome-star { color: var(--ls-lime); }
+        .ls-stats { gap: 14px; }
+        .ls-stat {
+          background: #fff; border: 1px solid #e6e7de; border-radius: 14px;
+          padding: 22px 18px; gap: 14px; box-shadow: 0 3px 12px rgba(30,53,39,.025);
+        }
+        .ls-stat-icon { background: #e9efdf; color: var(--ls-green); border-radius: 12px; width: 48px; height: 48px; }
+        .ls-stat:nth-child(2) .ls-stat-icon { background: #f8e9dc; color: #ad6135; }
+        .ls-stat:nth-child(3) .ls-stat-icon { background: #e4eee8; color: #2c674b; }
+        .ls-stat:nth-child(4) .ls-stat-icon { background: #f4edcf; color: #8a7029; }
+        .ls-stat-label { color: var(--ls-muted); }
+        .ls-stat-value { color: var(--ls-ink); font-family: Georgia, "Times New Roman", serif; font-size: 30px; }
+        .ls-stat-small { color: #9aa398; }
+        .ls-card, .ls-course-detail, .ls-profile {
+          background: #fff; border: 1px solid #e4e6dc; border-radius: 16px;
+          box-shadow: 0 3px 12px rgba(30,53,39,.025);
+        }
+        .ls-card { padding: 25px; }
+        .ls-card-header h2, .ls-detail-title, .ls-section-title { color: var(--ls-ink); }
+        .ls-card-header h2 { font-family: Georgia, "Times New Roman", serif; font-size: 22px; font-weight: 500; }
+        .ls-card-header p, .ls-section-description { color: var(--ls-muted); }
+        .ls-link, .ls-back-button { color: var(--ls-green); }
+        .ls-course { border: 1px solid #e7e9e0; border-radius: 12px; padding: 15px; }
+        .ls-course:hover, .ls-assessment:hover { border-color: #b8cba8; background: #fafbf6; }
+        .ls-course-icon { background: #e8efdf; color: var(--ls-green); border-radius: 12px; }
+        .ls-course-title, .ls-assessment-title { color: var(--ls-ink); }
+        .ls-course-description, .ls-assessment-course { color: var(--ls-muted); }
+        .ls-progress-line { background: #e9ece3; height: 7px; }
+        .ls-progress-fill { background: var(--ls-green); }
+        .ls-course-percent { color: var(--ls-green); }
+        .ls-circle { background: conic-gradient(var(--ls-orange) var(--progress), #e9ece3 0); }
+        .ls-circle-inner { background: #fff; }
+        .ls-circle-inner strong { color: var(--ls-green); font-family: Georgia, "Times New Roman", serif; }
+        .ls-progress-row { border-bottom-color: #edf0e8; }
+        .ls-progress-row span { color: var(--ls-muted); }
+        .ls-progress-row strong { color: var(--ls-ink); }
+        .ls-assessment { border-color: #e7e9e0; border-radius: 12px; }
+        .ls-assessment-icon { background: #f8e9dc; color: #ad6135; border-radius: 11px; }
+        .ls-activity { border-bottom-color: #edf0e8; }
+        .ls-activity-icon { background: #e8efdf; color: var(--ls-green); }
+        .ls-activity p { color: #405348; }
+        .ls-recommendation { background: #eaf0df; border: 1px solid #dbe5cc; border-radius: 15px; }
+        .ls-recommendation-icon { background: #d9e5c5; color: var(--ls-green); border-radius: 12px; }
+        .ls-recommendation h3 { color: var(--ls-ink); font-family: Georgia, "Times New Roman", serif; font-size: 21px; }
+        .ls-recommendation p { color: #657568; line-height: 1.6; }
+        .ls-primary-button { background: var(--ls-green); border-radius: 9px; }
+        .ls-primary-button:hover { background: var(--ls-green-deep); }
+        .ls-section-title { font-family: Georgia, "Times New Roman", serif; font-weight: 500; letter-spacing: -.6px; }
+        .ls-course-detail, .ls-profile { padding: 30px; }
+        .ls-detail-title { font-family: Georgia, "Times New Roman", serif; font-weight: 500; }
+        .ls-detail-description { color: var(--ls-muted); line-height: 1.75; }
+        .ls-lesson { border-color: #e7e9e0; border-radius: 12px; }
+        .ls-lesson-status { background: #e8efdf; color: var(--ls-green); }
+        .ls-lesson-status.completed { background: #e1eee5; color: #286b48; }
+        .ls-badge { background: #e8efdf; color: var(--ls-green); }
+        .ls-profile-avatar { background: var(--ls-green); color: #fff; }
+        .ls-profile-row { border-bottom-color: #edf0e8; }
+        .ls-profile-row span { color: var(--ls-muted); }
+        .ls-profile-row strong { color: var(--ls-ink); }
+        .ls-empty { color: #8a958a; }
+        .ls-error { border-radius: 10px; }
+        .ls-app footer { color: #879286 !important; }
+        @media (max-width: 850px) {
+          .ls-sidebar { background: var(--ls-green-deep); }
+          .ls-topbar { padding: 18px 22px; }
+          .ls-content { padding: 24px; }
+          .ls-welcome { padding: 30px; }
+        }
+        @media (max-width: 600px) {
+          .ls-content { padding: 16px; }
+          .ls-welcome { padding: 25px 22px; }
+          .ls-stat { padding: 18px; }
+        }
+
+
+        /* LearnSmart light-blue + white theme (high-specificity overrides) */
+        .ls-app { background: #edf6ff !important; color: #17324d !important; }
+        .ls-main, .ls-content { background: #edf6ff !important; }
+        .ls-sidebar, .ls-topbar, .ls-card, .ls-course-detail, .ls-profile,
+        .ls-stat, .ls-user, .ls-search, .ls-help-card { background-color: #ffffff !important; }
+        .ls-sidebar { border-right-color: #d8e8f8 !important; }
+        .ls-topbar { border-bottom-color: #d8e8f8 !important; }
+        .ls-logo-box, .ls-loading-logo, .ls-avatar { background: linear-gradient(135deg, #3984d6, #67b7f5) !important; color: #ffffff !important; }
+        .ls-logo-title, .ls-user-name, .ls-profile-row strong, .ls-card-header h2,
+        .ls-detail-title, .ls-section-title, .ls-course-title, .ls-assessment-title,
+        .ls-stat-value, .ls-stat-label, .ls-stat-small, .ls-profile-row, .ls-nav-button { color: #17324d !important; }
+        .ls-logo-subtitle, .ls-user-role, .ls-profile-row span, .ls-card-header p,
+        .ls-section-description, .ls-course-description, .ls-assessment-course { color: #647c93 !important; }
+        .ls-nav-button.active { background: #e0f0ff !important; color: #2168ad !important; }
+        .ls-nav-button:hover { background: #eff7ff !important; color: #2168ad !important; }
+        .ls-welcome { background: linear-gradient(120deg, #d9edff, #f4faff) !important; color: #17324d !important; border: 1px solid #c9e3fa !important; }
+        .ls-welcome h1, .ls-welcome p, .ls-welcome-box span { color: #17324d !important; }
+        .ls-eyebrow, .ls-welcome-star { color: #2878c8 !important; }
+        .ls-welcome-box { background: #ffffff !important; border-color: #c9e3fa !important; }
+        .ls-stat-icon, .ls-course-icon, .ls-refresh, .ls-assessment-icon { background: #e4f2ff !important; color: #2878c8 !important; }
+        .ls-progress-fill { background: #3984d6 !important; }
+        .ls-link, .ls-back-button, .ls-course-percent { color: #2878c8 !important; }
+        .ls-app button:not(.ls-chat-toggle):not(.ls-chat-close) { }
+        .ls-loading-screen { background: #edf6ff !important; }
+        .ls-chat-toggle { position: fixed; right: 26px; bottom: 24px; z-index: 9998; border: 0; border-radius: 999px; padding: 15px 20px; background: #2878c8; color: white; font-weight: 700; box-shadow: 0 8px 26px #174a7a35; cursor: pointer; }
+        .ls-chat-panel { position: fixed; right: 24px; bottom: 86px; z-index: 9999; width: min(370px, calc(100vw - 32px)); height: min(510px, calc(100vh - 120px)); display: flex; flex-direction: column; overflow: hidden; border: 1px solid #d4e7f8; border-radius: 18px; background: white; box-shadow: 0 16px 50px #17324d2b; font-family: Arial, Helvetica, sans-serif; }
+        .ls-chat-head { padding: 15px 17px; display: flex; align-items: center; justify-content: space-between; background: #2878c8; color: white; }
+        .ls-chat-head small { display: block; opacity: .85; margin-top: 3px; }
+        .ls-chat-close { border: 0; background: transparent; color: white; font-size: 24px; cursor: pointer; }
+        .ls-chat-log { flex: 1; overflow-y: auto; padding: 14px; background: #f3f9ff; display: flex; flex-direction: column; gap: 10px; }
+        .ls-chat-bubble { max-width: 88%; white-space: pre-wrap; overflow-wrap: anywhere; padding: 10px 12px; border-radius: 13px; font-size: 13px; line-height: 1.5; }
+        .ls-chat-bubble.assistant { align-self: flex-start; background: white; border: 1px solid #e0edf8; color: #22384d; }
+        .ls-chat-bubble.user { align-self: flex-end; background: #dceeff; color: #173e66; }
+        .ls-chat-form { display: flex; gap: 8px; padding: 11px; border-top: 1px solid #e0edf8; background: white; }
+        .ls-chat-form input { min-width: 0; flex: 1; padding: 11px 12px; border: 1px solid #cfe0ef; border-radius: 10px; outline-color: #3984d6; }
+        .ls-chat-form button { border: 0; border-radius: 10px; padding: 0 15px; background: #2878c8; color: white; font-weight: 700; cursor: pointer; }
+        .ls-chat-form button:disabled { opacity: .55; cursor: wait; }
+
+        /* Daily learning streak card and milestone graph */
+        .ls-streak-card {
+          display: grid;
+          grid-template-columns: minmax(0, 1.1fr) minmax(260px, .9fr);
+          gap: 26px;
+          align-items: center;
+          margin: 0 0 30px;
+          padding: 26px 30px;
+          border: 1px solid #cfe5fa;
+          border-radius: 22px;
+          background: linear-gradient(115deg, #ffffff 0%, #f1f8ff 100%);
+          box-shadow: 0 8px 24px rgba(40, 120, 200, .07);
+          min-width: 0;
+        }
+        .ls-streak-heading { display: flex; align-items: center; gap: 15px; min-width: 0; }
+        .ls-streak-flame {
+          width: 68px; height: 68px; flex: 0 0 68px; display: grid; place-items: center;
+          border-radius: 20px; background: linear-gradient(145deg, #fff0d8, #ffe0c2);
+          font-size: 38px; box-shadow: inset 0 0 0 1px #ffd5a5;
+        }
+        .ls-streak-eyebrow { margin: 0 0 5px; color: #2878c8; font-size: 11px; font-weight: 800; letter-spacing: 1.5px; text-transform: uppercase; }
+        .ls-streak-title { margin: 0; color: #17324d; font-size: 21px; font-weight: 800; }
+        .ls-streak-subtitle { margin: 7px 0 0; color: #647c93; font-size: 13px; line-height: 1.5; }
+        .ls-streak-metrics { display: flex; gap: 22px; flex-wrap: wrap; margin-top: 22px; }
+        .ls-streak-metric { display: flex; align-items: baseline; gap: 7px; color: #647c93; font-size: 12px; }
+        .ls-streak-metric strong { color: #17324d; font-size: 25px; }
+        .ls-streak-status { display: inline-flex; align-items: center; gap: 6px; margin-top: 14px; padding: 7px 10px; border-radius: 999px; background: #e6f6ed; color: #20764a; font-size: 12px; font-weight: 700; }
+        .ls-streak-status.pending { background: #fff2df; color: #9a5a18; }
+        .ls-streak-graph { min-width: 0; padding: 17px 18px 13px; border: 1px solid #dbeafa; border-radius: 17px; background: rgba(255,255,255,.9); }
+        .ls-streak-graph-top { display: flex; justify-content: space-between; align-items: center; gap: 10px; margin-bottom: 16px; color: #17324d; font-size: 13px; font-weight: 800; }
+        .ls-streak-graph-top span { color: #6b849c; font-size: 11px; font-weight: 600; }
+        .ls-streak-bars { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); align-items: end; gap: 9px; height: 78px; }
+        .ls-streak-bar-wrap { display: flex; flex-direction: column; justify-content: flex-end; align-items: center; gap: 7px; height: 100%; min-width: 0; }
+        .ls-streak-bar { width: 100%; max-width: 28px; min-height: 8px; border-radius: 7px 7px 3px 3px; background: #e3f0fc; border: 1px solid #cfe4f8; }
+        .ls-streak-bar.reached { background: linear-gradient(180deg, #7cc3ff, #2878c8); border-color: #69b4f5; }
+        .ls-streak-bar-label { color: #7790a7; font-size: 10px; }
+        .ls-streak-goal { margin-top: 13px; display: flex; justify-content: space-between; gap: 12px; color: #647c93; font-size: 11px; }
+        .ls-streak-goal strong { color: #2878c8; }
+        .ls-streak-unavailable { margin: 0 0 30px; padding: 16px 20px; border: 1px dashed #c8deef; border-radius: 16px; background: #f8fbff; color: #647c93; font-size: 13px; }
+        @media (max-width: 850px) { .ls-streak-card { grid-template-columns: 1fr; padding: 22px; } }
+        @media (max-width: 600px) { .ls-streak-card { padding: 18px; gap: 18px; } .ls-streak-flame { width: 56px; height: 56px; flex-basis: 56px; font-size: 32px; border-radius: 16px; } .ls-streak-title { font-size: 18px; } .ls-streak-metrics { gap: 16px; } .ls-streak-bars { gap: 6px; } }
+
+        /* Layout safety fixes: isolate dashboard from global app CSS */
+        .ls-app, .ls-app * { box-sizing: border-box; }
+        .ls-app { display: flex; align-items: stretch; width: 100%; max-width: 100%; min-height: 100vh; overflow-x: clip; }
+        .ls-app > .ls-sidebar { flex: 0 0 270px; width: 270px; min-width: 270px; height: 100vh; overflow-y: auto; z-index: 20; }
+        .ls-app > .ls-main { flex: 1 1 0; width: calc(100% - 270px); min-width: 0; max-width: calc(100% - 270px); overflow-x: clip; }
+        .ls-app .ls-content { width: 100%; max-width: 1600px; min-width: 0; margin: 0 auto; padding: 32px; }
+        .ls-app .ls-grid-two { display: grid; grid-template-columns: minmax(0, 1.6fr) minmax(280px, .9fr); align-items: start; gap: 24px; width: 100%; min-width: 0; margin: 0 0 30px; }
+        .ls-app .ls-bottom-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); align-items: start; gap: 24px; width: 100%; min-width: 0; margin: 0 0 30px; }
+        .ls-app .ls-card { position: relative; display: block; float: none; width: 100%; min-width: 0; max-width: 100%; height: auto; min-height: 0; margin: 0 0 24px; overflow-wrap: anywhere; }
+        .ls-app .ls-grid-two > .ls-card, .ls-app .ls-bottom-grid > .ls-card { margin: 0; }
+        .ls-app .ls-course { position: relative; display: flex; align-items: center; width: 100%; max-width: 100%; min-width: 0; height: auto; min-height: 0; margin: 0 0 13px; }
+        .ls-app .ls-course-main { flex: 1 1 0; min-width: 0; width: 0; }
+        .ls-app .ls-course-title { white-space: normal; overflow-wrap: anywhere; line-height: 1.35; }
+        .ls-app .ls-course-description { display: block; width: 100%; max-width: 100%; white-space: normal; overflow: visible; text-overflow: clip; overflow-wrap: anywhere; line-height: 1.5; }
+        .ls-app .ls-progress-line { position: relative; display: block; width: 100%; max-width: 100%; height: 8px; margin-top: 12px; overflow: hidden; }
+        .ls-app .ls-progress-fill { display: block; max-width: 100%; height: 100%; }
+        .ls-app .ls-course-percent { flex: 0 0 45px; min-width: 45px; text-align: right; }
+        .ls-app .ls-circle-wrap { position: relative; display: flex; width: 100%; justify-content: center; align-items: center; }
+        .ls-app .ls-circle { position: relative; flex: 0 0 190px; width: 190px; height: 190px; max-width: 100%; }
+        .ls-app .ls-progress-row { position: relative; display: flex; width: 100%; align-items: center; justify-content: space-between; gap: 12px; }
+        .ls-app .ls-streak-card { position: relative; display: grid; grid-template-columns: minmax(0, 1fr) minmax(250px, .85fr); align-items: center; gap: 24px; width: 100%; min-width: 0; height: auto; margin: 0 0 30px; }
+        .ls-app .ls-topbar { width: 100%; min-width: 0; }
+        .ls-app .ls-chat-toggle { position: fixed; right: 20px; bottom: 18px; z-index: 9998; }
+        .ls-app .ls-chat-panel { position: fixed; right: 20px; bottom: 82px; z-index: 9999; }
+        @media (max-width: 1150px) {
+          .ls-app > .ls-sidebar { flex-basis: 220px; width: 220px; min-width: 220px; }
+          .ls-app > .ls-main { width: calc(100% - 220px); max-width: calc(100% - 220px); }
+          .ls-app .ls-content { padding: 24px; }
+          .ls-app .ls-grid-two { grid-template-columns: minmax(0, 1fr); }
+        }
+        @media (max-width: 850px) {
+          .ls-app { display: block; }
+          .ls-app > .ls-sidebar { width: 100%; min-width: 0; height: auto; min-height: 0; position: relative; overflow: visible; }
+          .ls-app > .ls-main { width: 100%; max-width: 100%; }
+          .ls-app .ls-content { padding: 20px; }
+          .ls-app .ls-bottom-grid { grid-template-columns: minmax(0, 1fr); }
+          .ls-app .ls-streak-card { grid-template-columns: minmax(0, 1fr); }
+        }
+        @media (max-width: 600px) {
+          .ls-app .ls-content { padding: 14px; }
+          .ls-app .ls-card { padding: 18px; }
+          .ls-app .ls-course { align-items: flex-start; gap: 10px; padding: 12px; }
+          .ls-app .ls-course-icon { width: 42px; height: 42px; flex: 0 0 42px; }
+          .ls-app .ls-course-percent { flex-basis: 38px; min-width: 38px; }
+          .ls-app .ls-chat-toggle { right: 12px; bottom: 12px; padding: 12px 15px; }
+          .ls-app .ls-chat-panel { right: 12px; bottom: 72px; width: calc(100vw - 24px); }
+        }
       `}</style>
 
       {/* SIDEBAR */}
@@ -1754,6 +2082,69 @@ function Dashboard({ onLogout }) {
                 </div>
 
               </section>
+
+              {/* DAILY LEARNING STREAK + 7-DAY MILESTONE GRAPH */}
+              {streak ? (
+                <section className="ls-streak-card" aria-label="Learning streak">
+                  <div>
+                    <div className="ls-streak-heading">
+                      <div className="ls-streak-flame" role="img" aria-label="Fire">
+                        🔥
+                      </div>
+                      <div>
+                        <p className="ls-streak-eyebrow">Your learning streak</p>
+                        <h2 className="ls-streak-title">
+                          {Number(streak.current_streak || 0) > 0
+                            ? `${streak.current_streak} day${Number(streak.current_streak) === 1 ? "" : "s"} in a row!`
+                            : "Start your streak today"}
+                        </h2>
+                        <p className="ls-streak-subtitle">
+                          Small daily steps build strong learning habits. Come back tomorrow to keep it going.
+                        </p>
+                      </div>
+                    </div>
+                    <div className="ls-streak-metrics">
+                      <div className="ls-streak-metric"><strong>{Number(streak.current_streak || 0)}</strong> current days</div>
+                      <div className="ls-streak-metric"><strong>{Number(streak.longest_streak || 0)}</strong> personal best</div>
+                    </div>
+                    <div className={`ls-streak-status ${streak.active_today ? "" : "pending"}`}>
+                      <span>{streak.active_today ? "✓" : "•"}</span>
+                      {streak.active_today ? "You've learned today — streak secured!" : "Complete a learning activity today to check in."}
+                    </div>
+                  </div>
+
+                  <div className="ls-streak-graph">
+                    <div className="ls-streak-graph-top">
+                      <div>7-day milestone</div>
+                      <span>{Math.min(Number(streak.current_streak || 0), 7)} / 7 days</span>
+                    </div>
+                    <div className="ls-streak-bars" role="img" aria-label={`${Math.min(Number(streak.current_streak || 0), 7)} of 7 days toward the streak milestone`}>
+                      {Array.from({ length: 7 }, (_, index) => {
+                        const dayNumber = index + 1;
+                        const reached = Number(streak.current_streak || 0) >= dayNumber;
+                        return (
+                          <div className="ls-streak-bar-wrap" key={dayNumber}>
+                            <div
+                              className={`ls-streak-bar ${reached ? "reached" : ""}`}
+                              style={{ height: `${18 + dayNumber * 7}px` }}
+                              title={`Day ${dayNumber}${reached ? " reached" : " goal"}`}
+                            />
+                            <span className="ls-streak-bar-label">{dayNumber}</span>
+                          </div>
+                        );
+                      })}
+                    </div>
+                    <div className="ls-streak-goal">
+                      <span>Keep the momentum going</span>
+                      <strong>{Number(streak.current_streak || 0) >= 7 ? "Milestone reached 🎉" : `${7 - Math.min(Number(streak.current_streak || 0), 7)} to go`}</strong>
+                    </div>
+                  </div>
+                </section>
+              ) : streakUnavailable ? (
+                <div className="ls-streak-unavailable">
+                  🔥 Streak tracking will appear here once the <code>/api/streaks/</code> endpoint is enabled and activity is being recorded.
+                </div>
+              ) : null}
 
               {/* PROGRAMS + OVERALL PROGRESS */}
 
@@ -3022,6 +3413,18 @@ function Dashboard({ onLogout }) {
 
       </div>
 
+
+      {chatOpen ? (
+        <section className="ls-chat-panel" aria-label="LearnSmart AI chatbot">
+          <div className="ls-chat-head"><div><strong>LearnSmart AI</strong><small>Course and performance assistant</small></div><button className="ls-chat-close" type="button" onClick={() => setChatOpen(false)} aria-label="Close chatbot">×</button></div>
+          <div className="ls-chat-log">
+            {chatMessages.map((item, index) => <div key={`${item.role}-${index}`} className={`ls-chat-bubble ${item.role}`}>{item.text}</div>)}
+            {chatSending && <div className="ls-chat-bubble assistant">Thinking…</div>}
+          </div>
+          <form className="ls-chat-form" onSubmit={sendChatMessage}><input value={chatInput} onChange={(event) => setChatInput(event.target.value)} placeholder="Ask LearnSmart AI…" aria-label="Message chatbot"/><button type="submit" disabled={chatSending || !chatInput.trim()}>Send</button></form>
+        </section>
+      ) : null}
+      <button className="ls-chat-toggle" type="button" onClick={() => setChatOpen((open) => !open)}>{chatOpen ? "Close AI chat" : "💬 Ask LearnSmart AI"}</button>
     </div>
   );
 }

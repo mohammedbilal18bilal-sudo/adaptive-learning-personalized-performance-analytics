@@ -14,6 +14,13 @@ function FacultyDashboard({ onLogout }) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
+  const [chatOpen, setChatOpen] = useState(false);
+  const [chatInput, setChatInput] = useState("");
+  const [chatMessages, setChatMessages] = useState([
+    { role: "assistant", text: "Hi! I’m LearnSmart AI. Ask me about your courses, lessons, progress, or assessments." },
+  ]);
+  const [chatSending, setChatSending] = useState(false);
+
   const username = localStorage.getItem("username") || "Faculty";
   const token = localStorage.getItem("accessToken");
 
@@ -883,6 +890,35 @@ function FacultyDashboard({ onLogout }) {
    * ---------------------------------------------------------
    */
 
+
+  const sendChatMessage = async (event) => {
+    if (event) event.preventDefault();
+    const message = chatInput.trim();
+    if (!message || chatSending) return;
+    setChatMessages((previous) => [...previous, { role: "user", text: message }]);
+    setChatInput("");
+    setChatSending(true);
+    try {
+      const response = await fetch(`${API_BASE_URL}/chatbot/`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${localStorage.getItem("accessToken") || ""}`,
+        },
+        body: JSON.stringify({ message }),
+      });
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        throw new Error(data.error || data.detail || `Chatbot request failed (${response.status}).`);
+      }
+      setChatMessages((previous) => [...previous, { role: "assistant", text: data.message || "I couldn't generate a reply. Please try again." }]);
+    } catch (error) {
+      setChatMessages((previous) => [...previous, { role: "assistant", text: `Sorry, I couldn't connect to the chatbot. ${error.message || "Check your login and backend connection."}` }]);
+    } finally {
+      setChatSending(false);
+    }
+  };
+
   if (loading) {
     return (
       <div className="faculty-loading-screen">
@@ -917,12 +953,12 @@ function FacultyDashboard({ onLogout }) {
         <div className="faculty-logo">
 
           <div className="faculty-logo-icon">
-            A
+            L
           </div>
 
           <div>
-            <h2>AdaptiveLearn</h2>
-            <span>Faculty Portal</span>
+            <h2>LearnSmart</h2>
+            <span>Faculty Workspace</span>
           </div>
 
         </div>
@@ -1693,6 +1729,108 @@ function FacultyDashboard({ onLogout }) {
 
         }
 
+        /* LearnSmart Faculty Workspace — distinct navy and teal design */
+        .faculty-app {
+          --ls-faculty-ink: #172b3a;
+          --ls-faculty-navy: #18364a;
+          --ls-faculty-teal: #1c817b;
+          --ls-faculty-mist: #edf4f4;
+          --ls-faculty-line: #dce7e8;
+          background: #edf3f5;
+          color: var(--ls-faculty-ink);
+          font-family: Inter, "Segoe UI", Arial, sans-serif;
+        }
+        .faculty-sidebar {
+          background: var(--ls-faculty-navy);
+          border-right: 0;
+          color: #f4fbfc;
+          box-shadow: 8px 0 28px rgba(20, 43, 58, .08);
+        }
+        .faculty-logo { border-bottom-color: rgba(255,255,255,.15); }
+        .faculty-logo-icon {
+          background: #b8e5df;
+          color: #173d4a;
+          border-radius: 13px;
+          box-shadow: 0 8px 20px rgba(0,0,0,.12);
+        }
+        .faculty-logo h2 { color: #fff; letter-spacing: -.4px; }
+        .faculty-logo span { color: #b7ced6; }
+        .faculty-nav-item {
+          color: #c8dbe0;
+          border-radius: 12px;
+          margin: 4px 0;
+          transition: background .18s ease, color .18s ease, transform .18s ease;
+        }
+        .faculty-nav-item:hover { background: rgba(255,255,255,.09); color: #fff; transform: translateX(2px); }
+        .faculty-nav-item.active {
+          background: #d8f0eb;
+          color: #153e49;
+          box-shadow: inset 3px 0 0 #38b6a7;
+          font-weight: 700;
+        }
+        .faculty-nav-icon { filter: saturate(.8); }
+        .faculty-logout { color: #d7e6ea; }
+        .faculty-logout:hover { background: rgba(255,255,255,.1); color: #fff; }
+        .faculty-main { background: #edf3f5; }
+        .faculty-header {
+          background: rgba(255,255,255,.92);
+          border-bottom: 1px solid var(--ls-faculty-line);
+          backdrop-filter: blur(12px);
+        }
+        .faculty-header h2 { color: var(--ls-faculty-navy); letter-spacing: -.5px; }
+        .faculty-avatar { background: #d8f0eb; color: #155b61; font-weight: 800; }
+        .faculty-content { max-width: 1500px; }
+        .faculty-welcome {
+          border: 0;
+          border-radius: 22px;
+          background: linear-gradient(120deg, #18364a 0%, #245c68 65%, #1c817b 100%);
+          color: #fff;
+          box-shadow: 0 16px 34px rgba(24,54,74,.14);
+          overflow: hidden;
+          position: relative;
+        }
+        .faculty-welcome::after {
+          content: "";
+          position: absolute;
+          width: 230px; height: 230px;
+          right: -60px; top: -100px;
+          border: 1px solid rgba(255,255,255,.22);
+          border-radius: 50%;
+          box-shadow: 0 0 0 28px rgba(255,255,255,.04), 0 0 0 58px rgba(255,255,255,.035);
+          pointer-events: none;
+        }
+        .faculty-welcome h1 { color: #fff; letter-spacing: -1px; }
+        .faculty-welcome p { color: #d4e9ed; }
+        .faculty-small-text { color: #aee4da !important; text-transform: uppercase; letter-spacing: 1.6px; font-size: 11px; font-weight: 800; }
+        .faculty-refresh-button {
+          background: #e1f4ef;
+          color: #174d55;
+          border: 1px solid rgba(255,255,255,.45);
+          border-radius: 12px;
+          font-weight: 750;
+          position: relative; z-index: 1;
+        }
+        .faculty-refresh-button:hover { background: #fff; }
+        .faculty-card, .faculty-section-card, .performance-summary-card {
+          border: 1px solid #e0e9eb;
+          border-radius: 18px;
+          box-shadow: 0 8px 24px rgba(27,57,72,.045);
+          background: #fff;
+        }
+        .faculty-card { transition: transform .18s ease, box-shadow .18s ease; }
+        .faculty-card:hover { transform: translateY(-3px); box-shadow: 0 14px 28px rgba(27,57,72,.09); }
+        .faculty-card-icon { background: #e1f2ef; color: #1c817b; border-radius: 13px; }
+        .faculty-card h3, .faculty-section-header h2 { color: #1b3d4e; }
+        .faculty-card p, .faculty-section-header p { color: #738791; }
+        .faculty-section-header { border-bottom-color: #e8eff0; }
+        .faculty-error { border-radius: 12px; }
+        .student-item, .performance-item { border-color: #e7eeee; }
+        .student-avatar { background: #e1f2ef; color: #1b6d70; }
+        .student-stat strong, .performance-stat strong { color: #1d6e70; }
+        .performance-summary-card strong { color: #1c817b; }
+        .database-message { border: 1px dashed #cbdcde; border-radius: 14px; background: #f7fbfb; color: #627983; }
+        .faculty-loading-logo { background: #18364a; }
+
         @media (max-width: 600px) {
 
           .faculty-sidebar {
@@ -1755,8 +1893,35 @@ function FacultyDashboard({ onLogout }) {
 
         }
 
+
+        /* Floating LearnSmart AI chatbot */
+        .ls-chat-toggle { position: fixed; right: 26px; bottom: 24px; z-index: 9998; border: 0; border-radius: 999px; padding: 15px 20px; background: #2878c8; color: white; font-weight: 700; box-shadow: 0 8px 26px #174a7a35; cursor: pointer; }
+        .ls-chat-panel { position: fixed; right: 24px; bottom: 86px; z-index: 9999; width: min(370px, calc(100vw - 32px)); height: min(510px, calc(100vh - 120px)); display: flex; flex-direction: column; overflow: hidden; border: 1px solid #d4e7f8; border-radius: 18px; background: white; box-shadow: 0 16px 50px #17324d2b; font-family: Arial, Helvetica, sans-serif; }
+        .ls-chat-head { padding: 15px 17px; display: flex; align-items: center; justify-content: space-between; background: #2878c8; color: white; }
+        .ls-chat-head small { display: block; opacity: .85; margin-top: 3px; }
+        .ls-chat-close { border: 0; background: transparent; color: white; font-size: 24px; cursor: pointer; }
+        .ls-chat-log { flex: 1; overflow-y: auto; padding: 14px; background: #f3f9ff; display: flex; flex-direction: column; gap: 10px; }
+        .ls-chat-bubble { max-width: 88%; white-space: pre-wrap; overflow-wrap: anywhere; padding: 10px 12px; border-radius: 13px; font-size: 13px; line-height: 1.5; }
+        .ls-chat-bubble.assistant { align-self: flex-start; background: white; border: 1px solid #e0edf8; color: #22384d; }
+        .ls-chat-bubble.user { align-self: flex-end; background: #dceeff; color: #173e66; }
+        .ls-chat-form { display: flex; gap: 8px; padding: 11px; border-top: 1px solid #e0edf8; background: white; }
+        .ls-chat-form input { min-width: 0; flex: 1; padding: 11px 12px; border: 1px solid #cfe0ef; border-radius: 10px; outline-color: #3984d6; }
+        .ls-chat-form button { border: 0; border-radius: 10px; padding: 0 15px; background: #2878c8; color: white; font-weight: 700; cursor: pointer; }
+        .ls-chat-form button:disabled { opacity: .55; cursor: wait; }
       `}</style>
 
+
+      {chatOpen ? (
+        <section className="ls-chat-panel" aria-label="LearnSmart AI chatbot">
+          <div className="ls-chat-head"><div><strong>LearnSmart AI</strong><small>Course and performance assistant</small></div><button className="ls-chat-close" type="button" onClick={() => setChatOpen(false)} aria-label="Close chatbot">×</button></div>
+          <div className="ls-chat-log">
+            {chatMessages.map((item, index) => <div key={`${item.role}-${index}`} className={`ls-chat-bubble ${item.role}`}>{item.text}</div>)}
+            {chatSending && <div className="ls-chat-bubble assistant">Thinking…</div>}
+          </div>
+          <form className="ls-chat-form" onSubmit={sendChatMessage}><input value={chatInput} onChange={(event) => setChatInput(event.target.value)} placeholder="Ask LearnSmart AI…" aria-label="Message chatbot"/><button type="submit" disabled={chatSending || !chatInput.trim()}>Send</button></form>
+        </section>
+      ) : null}
+      <button className="ls-chat-toggle" type="button" onClick={() => setChatOpen((open) => !open)}>{chatOpen ? "Close AI chat" : "💬 Ask LearnSmart AI"}</button>
     </div>
   );
 }

@@ -1,0 +1,502 @@
+
+@import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap");
+
+:root {
+  --ls-bg: #b6d7f2;
+  --ls-white: #ffffff;
+  --ls-navy: #19345c;
+  --ls-muted: #62758b;
+  --ls-blue: #3978c8;
+  --ls-blue-hover: #2864ad;
+  --ls-icon-bg: #e6f1fc;
+  --ls-border: #dceaf6;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+.learnsmart-page {
+  min-height: 100vh;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  color: var(--ls-navy);
+  font-family: "Inter", Arial, sans-serif;
+  background:
+    radial-gradient(
+      circle at 12% 20%,
+      rgba(255, 255, 255, 0.78),
+      transparent 32%
+    ),
+    radial-gradient(
+      circle at 90% 80%,
+      rgba(255, 255, 255, 0.38),
+      transparent 28%
+    ),
+    linear-gradient(
+      135deg,
+      #eef6ff 0%,
+      #d8eafa 52%,
+      #b6d7f2 100%
+    );
+}
+
+.ls-header {
+  width: 100%;
+  min-height: 78px;
+  padding: 18px 5.2%;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.ls-brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+  padding: 0;
+  border: none;
+  background: transparent;
+  color: var(--ls-navy);
+  font-size: 29px;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.ls-brand > svg {
+  width: 42px;
+  height: 42px;
+  fill: none;
+  stroke: var(--ls-blue);
+  stroke-width: 3;
+  stroke-linejoin: round;
+}
+
+.ls-brand span span {
+  color: var(--ls-blue);
+}
+
+.ls-impact {
+  padding: 12px 26px;
+  border: 1px solid #b8d4f5;
+  border-radius: 30px;
+  background: rgba(255, 255, 255, 0.7);
+  color: var(--ls-blue);
+  text-decoration: none;
+  font-size: 15px;
+  font-weight: 600;
+  transition: background 0.2s ease;
+}
+
+.ls-impact:hover {
+  background: var(--ls-white);
+}
+
+.ls-main {
+  width: 100%;
+  max-width: 1600px;
+  margin: 0 auto;
+  padding: 48px 5.5% 24px;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+
+.ls-intro {
+  text-align: center;
+  margin-bottom: 46px;
+}
+
+.ls-eyebrow {
+  margin: 0 0 20px;
+  color: var(--ls-blue);
+  font-size: 13px;
+  font-weight: 800;
+  letter-spacing: 3px;
+}
+
+.ls-intro h1 {
+  margin: 0;
+  color: var(--ls-navy);
+  font-size: clamp(34px, 4vw, 56px);
+  font-weight: 800;
+  line-height: 1.2;
+  letter-spacing: -1.8px;
+}
+
+.ls-intro h1 span {
+  color: var(--ls-blue);
+}
+
+.ls-subtitle {
+  margin: 17px 0 0;
+  color: var(--ls-muted);
+  font-size: 20px;
+  line-height: 1.6;
+}
+
+/* Portal cards */
+
+.ls-portals {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 28px;
+  width: 100%;
+}
+
+.ls-card {
+  min-height: 360px;
+  padding: 38px 28px 28px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  background: var(--ls-white);
+  border: 1px solid rgba(200, 222, 245, 0.9);
+  border-radius: 20px;
+  box-shadow: 0 12px 35px rgba(50, 94, 145, 0.08);
+  transition:
+    transform 0.25s ease,
+    box-shadow 0.25s ease,
+    border-color 0.25s ease;
+}
+
+.ls-card:hover {
+  transform: translateY(-5px);
+  border-color: #b6d4f5;
+  box-shadow: 0 18px 42px rgba(50, 94, 145, 0.14);
+}
+
+.ls-icon {
+  width: 88px;
+  height: 88px;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  background: var(--ls-icon-bg);
+  box-shadow: 0 7px 18px rgba(57, 120, 200, 0.1);
+}
+
+.ls-icon svg {
+  width: 43px;
+  height: 43px;
+  fill: none;
+  stroke: var(--ls-blue);
+  stroke-width: 2.5;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.ls-card h2,
+.ls-login-card h2 {
+  margin: 27px 0 12px;
+  color: var(--ls-navy);
+  font-size: 23px;
+  font-weight: 700;
+}
+
+.ls-card > p {
+  max-width: 330px;
+  min-height: 54px;
+  margin: 0;
+  color: var(--ls-muted);
+  font-size: 15px;
+  line-height: 1.8;
+}
+
+.ls-continue {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  margin-top: auto;
+  padding: 20px 10px 0;
+  border: none;
+  background: transparent;
+  color: var(--ls-blue);
+  font-family: inherit;
+  font-size: 17px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.ls-continue span {
+  font-size: 30px;
+  line-height: 0.7;
+  transition: transform 0.2s ease;
+}
+
+.ls-continue:hover {
+  color: var(--ls-blue-hover);
+}
+
+.ls-continue:hover span {
+  transform: translateX(4px);
+}
+
+/* Login form */
+
+.ls-login-wrap {
+  width: 100%;
+  display: flex;
+  justify-content: center;
+}
+
+.ls-login-card {
+  width: 100%;
+  max-width: 440px;
+  padding: 34px;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  background: var(--ls-white);
+  border: 1px solid var(--ls-border);
+  border-radius: 20px;
+  box-shadow: 0 14px 40px rgba(50, 94, 145, 0.12);
+}
+
+.ls-login-icon {
+  align-self: center;
+}
+
+.ls-login-card h2 {
+  margin-top: 20px;
+  text-align: center;
+}
+
+.ls-form-description {
+  margin: 0 0 24px;
+  color: var(--ls-muted);
+  font-size: 14px;
+  text-align: center;
+}
+
+.ls-login-card label {
+  margin: 14px 0 8px;
+  color: var(--ls-navy);
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.ls-login-card input {
+  width: 100%;
+  padding: 13px 14px;
+  border: 1px solid #d5e2f0;
+  border-radius: 9px;
+  outline: none;
+  background: #fbfdff;
+  color: var(--ls-navy);
+  font-family: inherit;
+  font-size: 14px;
+}
+
+.ls-login-card input:focus {
+  border-color: var(--ls-blue);
+  box-shadow: 0 0 0 3px rgba(57, 120, 200, 0.12);
+}
+
+.ls-login-card input::placeholder {
+  color: #98a8ba;
+}
+
+.ls-submit {
+  width: 100%;
+  margin-top: 24px;
+  padding: 14px;
+  border: none;
+  border-radius: 10px;
+  background: var(--ls-blue);
+  color: var(--ls-white);
+  font-family: inherit;
+  font-size: 15px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.ls-submit:hover:not(:disabled) {
+  background: var(--ls-blue-hover);
+}
+
+.ls-submit:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+}
+
+.ls-error {
+  margin: 14px 0 0;
+  color: #c62828;
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.ls-back {
+  align-self: center;
+  margin-top: 20px;
+  padding: 5px;
+  border: none;
+  background: transparent;
+  color: var(--ls-blue);
+  font-family: inherit;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.ls-back:hover {
+  color: var(--ls-blue-hover);
+  text-decoration: underline;
+}
+
+/* Footer */
+
+.ls-tagline {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 10px;
+  margin: 38px 0 0;
+  color: var(--ls-muted);
+  font-size: 14px;
+  text-align: center;
+}
+
+.ls-dot {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: var(--ls-blue);
+}
+
+.ls-footer {
+  padding: 16px 20px 22px;
+  color: var(--ls-muted);
+  font-size: 12px;
+  text-align: center;
+}
+
+/* Tablet */
+
+@media (max-width: 900px) {
+  .ls-main {
+    padding: 38px 5% 24px;
+  }
+
+  .ls-portals {
+    gap: 18px;
+  }
+
+  .ls-card {
+    min-height: 340px;
+    padding: 30px 18px 24px;
+  }
+
+  .ls-card h2 {
+    font-size: 20px;
+  }
+
+  .ls-card > p {
+    font-size: 14px;
+  }
+
+  .ls-icon {
+    width: 76px;
+    height: 76px;
+  }
+}
+
+/* Mobile */
+
+@media (max-width: 650px) {
+  .ls-header {
+    min-height: 70px;
+    padding: 16px 5%;
+  }
+
+  .ls-brand {
+    gap: 8px;
+    font-size: 23px;
+  }
+
+  .ls-brand > svg {
+    width: 34px;
+    height: 34px;
+  }
+
+  .ls-impact {
+    padding: 10px 17px;
+    font-size: 13px;
+  }
+
+  .ls-main {
+    padding: 35px 6% 28px;
+  }
+
+  .ls-intro {
+    margin-bottom: 30px;
+  }
+
+  .ls-eyebrow {
+    margin-bottom: 15px;
+    font-size: 11px;
+    letter-spacing: 2px;
+  }
+
+  .ls-intro h1 {
+    font-size: clamp(30px, 8vw, 42px);
+    letter-spacing: -1px;
+  }
+
+  .ls-subtitle {
+    margin-top: 12px;
+    font-size: 16px;
+  }
+
+  .ls-portals {
+    grid-template-columns: 1fr;
+    gap: 18px;
+  }
+
+  .ls-card {
+    min-height: 300px;
+    padding: 28px 24px;
+  }
+
+  .ls-card h2 {
+    margin-top: 20px;
+  }
+
+  .ls-card > p {
+    min-height: auto;
+  }
+
+  .ls-continue {
+    margin-top: 18px;
+    padding-top: 8px;
+  }
+
+  .ls-tagline {
+    margin-top: 30px;
+    font-size: 12px;
+  }
+
+  .ls-footer {
+    font-size: 11px;
+  }
+
+  .ls-login-card {
+    padding: 28px 22px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+    transition: none !important;
+  }
+}

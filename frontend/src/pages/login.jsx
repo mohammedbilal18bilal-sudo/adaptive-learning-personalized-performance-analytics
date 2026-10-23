@@ -1,67 +1,69 @@
+
 import React, { useState } from "react";
+import "./login.css";
 import API_BASE_URL from "../services/api";
 
-function Login({ onLogin }) {
-  const [selectedRole, setSelectedRole] = useState(null);
+const portals = [
+  {
+    id: "student",
+    title: "Student Portal",
+    description: "Access courses, lessons, and your learning progress.",
+    icon: "student",
+  },
+  {
+    id: "faculty",
+    title: "Faculty Portal",
+    description: "Manage courses, assessments, and student performance.",
+    icon: "faculty",
+  },
+  {
+    id: "admin",
+    title: "Admin Portal",
+    description: "Manage users and configure the learning platform.",
+    icon: "admin",
+  },
+];
 
+function PortalIcon({ type }) {
+  if (type === "student") {
+    return (
+      <svg viewBox="0 0 48 48" aria-hidden="true">
+        <circle cx="24" cy="16" r="8" />
+        <path d="M9 40v-4a15 15 0 0 1 30 0v4z" />
+      </svg>
+    );
+  }
+
+  if (type === "faculty") {
+    return (
+      <svg viewBox="0 0 48 48" aria-hidden="true">
+        <rect x="5" y="7" width="15" height="23" rx="2" />
+        <path d="M9 13h7M9 18h7M9 23h5" />
+        <rect x="24" y="8" width="19" height="16" rx="2" />
+        <path d="M33.5 24v6M28 30h11M12 35h24M18 35l-3 4" />
+      </svg>
+    );
+  }
+
+  return (
+    <svg viewBox="0 0 48 48" aria-hidden="true">
+      <rect x="5" y="6" width="38" height="27" rx="3" />
+      <path d="M12 14h24M12 20h18M12 26h14M24 33v7M17 40h14" />
+    </svg>
+  );
+}
+
+export default function Login({ onLogin }) {
+  const [selectedRole, setSelectedRole] = useState("");
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
-
-  const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
-  const roles = [
-    {
-      id: "student",
-      title: "Student Login",
-      description:
-        "Access courses, lessons and your learning progress.",
-      icon: "🎓",
-    },
-    {
-      id: "faculty",
-      title: "Faculty Login",
-      description:
-        "Manage courses, assessments and student performance.",
-      icon: "👨‍🏫",
-    },
-    {
-      id: "admin",
-      title: "Admin Login",
-      description:
-        "Manage users, courses and the learning platform.",
-      icon: "⚙️",
-    },
-  ];
-
-  const handleRoleSelect = (role) => {
-    setSelectedRole(role);
+  const handleLogin = async (event) => {
+    event.preventDefault();
     setError("");
-    setUsername("");
-    setPassword("");
-  };
-
-  const handleBack = () => {
-    setSelectedRole(null);
-    setError("");
-    setUsername("");
-    setPassword("");
-  };
-
-  const handleLogin = async (e) => {
-    e.preventDefault();
-
-    setError("");
-
-    if (!username.trim() || !password.trim()) {
-      setError("Please enter both username and password.");
-      return;
-    }
-
     setLoading(true);
-
-    console.log("LOGIN: STARTED");
 
     try {
       const response = await fetch(`${API_BASE_URL}/token/`, {
@@ -70,334 +72,193 @@ function Login({ onLogin }) {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          username: username.trim(),
-          password: password,
+          username,
+          password,
         }),
       });
-
-      console.log("LOGIN: RESPONSE STATUS", response.status);
 
       const data = await response.json();
 
       if (!response.ok) {
         throw new Error(
-          data.detail || "Invalid username or password."
+          data.detail || data.message || "Invalid username or password."
         );
       }
 
-      if (!data.access || !data.refresh) {
-        throw new Error(
-          "Login succeeded, but authentication tokens were not received."
-        );
+      if (!data.access) {
+        throw new Error("Access token was not returned by the server.");
       }
 
-      /*
-       * Save the JWT tokens received from the backend.
-       */
       localStorage.setItem("accessToken", data.access);
-      localStorage.setItem("refreshToken", data.refresh);
 
-      /*
-       * Save username and selected account type.
-       */
-      localStorage.setItem("username", username.trim());
-      localStorage.setItem(
-        "userRole",
-        selectedRole ? selectedRole.id : "student"
-      );
-
-      console.log("LOGIN: TOKEN SAVED");
-      console.log(
-        "LOGIN: TOKEN EXISTS",
-        Boolean(localStorage.getItem("accessToken"))
-      );
-
-      setLoading(false);
-
-      /*
-       * Tell App.jsx that login was successful.
-       *
-       * App.jsx will then change from Login
-       * to Dashboard.
-       */
-      if (typeof onLogin === "function") {
-        console.log("LOGIN: CALLING APP onLogin()");
-        onLogin();
-        return;
+      if (data.refresh) {
+        localStorage.setItem("refreshToken", data.refresh);
       }
 
-      /*
-       * Safety fallback in case Login is opened
-       * without the onLogin prop.
-       */
-      console.log("LOGIN: onLogin unavailable");
-      window.location.reload();
-    } catch (loginError) {
-      console.error("LOGIN ERROR:", loginError);
+      localStorage.setItem("username", username);
+      localStorage.setItem("userRole", selectedRole);
 
-      setLoading(false);
-
+      if (typeof onLogin === "function") {
+        onLogin();
+      }
+    } catch (err) {
       setError(
-        loginError.message ||
+        err.message ||
           "Unable to connect to the server. Please try again."
       );
+    } finally {
+      setLoading(false);
     }
   };
 
+  const resetLogin = () => {
+    setSelectedRole("");
+    setUsername("");
+    setPassword("");
+    setError("");
+  };
+
+  const selectedPortal = portals.find(
+    (portal) => portal.id === selectedRole
+  );
+
   return (
-    <div className="role-login-page">
+    <div className="learnsmart-page">
+      <header className="ls-header">
+        <button
+          className="ls-brand"
+          type="button"
+          onClick={resetLogin}
+          aria-label="LearnSmart home"
+        >
+          <svg viewBox="0 0 48 48" aria-hidden="true">
+            <path d="M4 9c8-4 15-3 20 2v30c-5-5-12-6-20-2z" />
+            <path d="M44 9c-8-4-15-3-20 2v30c5-5 12-6 20-2z" />
+          </svg>
+          <span>
+            Learn<span>Smart</span>
+          </span>
+        </button>
 
-      {/* LEFT SIDE */}
-      <section className="role-login-left">
+        <a className="ls-impact" href="#impact">
+          Impact
+        </a>
+      </header>
 
-        <div className="left-overlay"></div>
+      <main className="ls-main">
+        <section className="ls-intro">
+          <p className="ls-eyebrow">ADAPTIVE LEARNING PLATFORM</p>
 
-        <div className="left-content">
+          <h1>
+            Welcome to <span>LearnSmart</span>
+          </h1>
 
-          <div className="learnsmart-logo">
-            <div className="logo-box">L</div>
-            <span>LearnSmart</span>
-          </div>
-
-          <div className="left-main-content">
-
-            <p className="platform-label">
-              ADAPTIVE LEARNING PLATFORM
-            </p>
-
-            <h1>
-              Learn.
-              <br />
-              <span>Improve.</span>
-              <br />
-              Achieve.
-            </h1>
-
-            <p className="platform-description">
-              A personalized learning platform designed to
-              help students learn better, track their progress,
-              and achieve their academic goals.
-            </p>
-
-          </div>
-
-          <div className="left-bottom">
-            <span>Learn Today.</span>
-            <span>Build Tomorrow.</span>
-          </div>
-
-        </div>
-
-      </section>
-
-      {/* RIGHT SIDE */}
-      <section className="role-login-right">
+          <p className="ls-subtitle">
+            {selectedPortal
+              ? `Sign in to your ${selectedPortal.title}`
+              : "Select your portal to continue"}
+          </p>
+        </section>
 
         {!selectedRole ? (
+          <section
+            className="ls-portals"
+            aria-label="Choose your portal"
+          >
+            {portals.map((portal) => (
+              <article className="ls-card" key={portal.id}>
+                <div className="ls-icon">
+                  <PortalIcon type={portal.icon} />
+                </div>
 
-          /* ROLE SELECTION */
-          <div className="role-selection">
+                <h2>{portal.title}</h2>
 
-            <div className="right-heading">
-
-              <h1>Welcome to LearnSmart</h1>
-
-              <p>
-                Select your account type to continue
-              </p>
-
-            </div>
-
-            <div className="role-list">
-
-              {roles.map((role) => (
+                <p>{portal.description}</p>
 
                 <button
-                  key={role.id}
                   type="button"
-                  className="role-card"
-                  onClick={() => handleRoleSelect(role)}
+                  className="ls-continue"
+                  onClick={() => {
+                    setSelectedRole(portal.id);
+                    setError("");
+                  }}
                 >
-
-                  <div className="role-icon">
-                    {role.icon}
-                  </div>
-
-                  <div className="role-information">
-
-                    <h2>{role.title}</h2>
-
-                    <p>{role.description}</p>
-
-                  </div>
-
-                  <div className="role-arrow">
-                    →
-                  </div>
-
+                  Continue <span aria-hidden="true">›</span>
                 </button>
-
-              ))}
-
-            </div>
-
-            <p className="role-footer">
-              © 2026 LearnSmart
-            </p>
-
-          </div>
-
+              </article>
+            ))}
+          </section>
         ) : (
-
-          /* LOGIN FORM */
-          <div className="actual-login">
-
-            <button
-              type="button"
-              className="back-button"
-              onClick={handleBack}
-            >
-              ← Back to account types
-            </button>
-
-            <div className="selected-role-heading">
-
-              <div className="selected-role-icon">
-                {selectedRole.icon}
+          <section className="ls-login-wrap">
+            <form className="ls-login-card" onSubmit={handleLogin}>
+              <div className="ls-icon ls-login-icon">
+                <PortalIcon type={selectedPortal.icon} />
               </div>
 
-              <div>
+              <h2>{selectedPortal.title}</h2>
 
-                <p className="small-label">
-                  LEARNSMART
+              <p className="ls-form-description">
+                Enter your credentials to continue.
+              </p>
+
+              <label htmlFor="ls-username">Username</label>
+
+              <input
+                id="ls-username"
+                type="text"
+                placeholder="Enter your username"
+                value={username}
+                onChange={(event) => setUsername(event.target.value)}
+                autoComplete="username"
+                required
+              />
+
+              <label htmlFor="ls-password">Password</label>
+
+              <input
+                id="ls-password"
+                type="password"
+                placeholder="Enter your password"
+                value={password}
+                onChange={(event) => setPassword(event.target.value)}
+                autoComplete="current-password"
+                required
+              />
+
+              {error && (
+                <p className="ls-error" role="alert">
+                  {error}
                 </p>
-
-                <h1>{selectedRole.title}</h1>
-
-                <p>
-                  Sign in to continue to your account.
-                </p>
-
-              </div>
-
-            </div>
-
-            {error && (
-              <div className="role-login-error">
-
-                <span>!</span>
-
-                <p>{error}</p>
-
-              </div>
-            )}
-
-            <form
-              className="login-form"
-              onSubmit={handleLogin}
-            >
-
-              {/* USERNAME */}
-
-              <div className="login-input-group">
-
-                <label htmlFor="username">
-                  Username
-                </label>
-
-                <div className="login-input-wrapper">
-
-                  <span>👤</span>
-
-                  <input
-                    id="username"
-                    type="text"
-                    placeholder="Enter your username"
-                    value={username}
-                    onChange={(e) =>
-                      setUsername(e.target.value)
-                    }
-                    disabled={loading}
-                    required
-                  />
-
-                </div>
-
-              </div>
-
-              {/* PASSWORD */}
-
-              <div className="login-input-group">
-
-                <label htmlFor="password">
-                  Password
-                </label>
-
-                <div className="login-input-wrapper">
-
-                  <span>🔒</span>
-
-                  <input
-                    id="password"
-                    type={
-                      showPassword
-                        ? "text"
-                        : "password"
-                    }
-                    placeholder="Enter your password"
-                    value={password}
-                    onChange={(e) =>
-                      setPassword(e.target.value)
-                    }
-                    disabled={loading}
-                    required
-                  />
-
-                  <button
-                    type="button"
-                    className="show-password"
-                    onClick={() =>
-                      setShowPassword(!showPassword)
-                    }
-                  >
-                    {showPassword ? "Hide" : "Show"}
-                  </button>
-
-                </div>
-
-              </div>
-
-              {/* LOGIN BUTTON */}
+              )}
 
               <button
                 type="submit"
-                className="role-login-button"
+                className="ls-submit"
                 disabled={loading}
               >
-
-                {loading
-                  ? "Signing in..."
-                  : `Sign In as ${selectedRole.title.replace(
-                      " Login",
-                      ""
-                    )}`}
-
+                {loading ? "Signing in..." : "Sign In"}
               </button>
 
+              <button
+                type="button"
+                className="ls-back"
+                onClick={resetLogin}
+              >
+                ← Back to portal selection
+              </button>
             </form>
-
-            <div className="login-security">
-              🔐 Secure login to your LearnSmart account
-            </div>
-
-          </div>
-
+          </section>
         )}
 
-      </section>
+        <p className="ls-tagline" id="impact">
+          <span className="ls-dot" />
+          One platform. Personalized learning. Better outcomes.
+        </p>
+      </main>
 
+      <footer className="ls-footer">
+        © 2026 LearnSmart · Adaptive Learning Platform
+      </footer>
     </div>
   );
 }
-
-export default Login;
