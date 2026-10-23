@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from "react";
 import API_BASE_URL from "../services/api";
-import Quiz from "./Quiz";
+import Quiz from "./quiz";
 
 function Dashboard({ onLogout }) {
   const [activeSection, setActiveSection] = useState("dashboard");
