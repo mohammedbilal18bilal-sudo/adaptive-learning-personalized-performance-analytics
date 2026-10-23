@@ -1,4 +1,3 @@
-```python
 from datetime import timedelta
 
 from django.utils import timezone
@@ -106,4 +105,4 @@ class UserStreakView(APIView):
                 **streak_data,
             }
         )
-```
+
