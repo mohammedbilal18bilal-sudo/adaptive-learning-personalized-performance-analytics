@@ -1,3 +1,4 @@
+```python
 from datetime import timedelta
 
 from django.utils import timezone
@@ -6,7 +7,8 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from .models import UserActivity, UserProfile
+from .models import UserActivity
+from .permissions import get_user_role
 
 
 # ============================================================
@@ -29,28 +31,6 @@ def record_user_activity(user, activity_type):
         activity_date=timezone.localdate(),
         activity_type=activity_type,
     )
-
-
-# ============================================================
-# CHECK USER ROLE
-# ============================================================
-
-def get_user_role(user):
-    """
-    Retrieve the user's role from UserProfile.
-
-    Users without a profile default to student, matching
-    the existing Learn Smart chatbot behavior.
-    """
-
-    profile = UserProfile.objects.filter(
-        user=user
-    ).first()
-
-    if profile:
-        return str(profile.role).strip().lower()
-
-    return "student"
 
 
 # ============================================================
@@ -96,8 +76,8 @@ def record_faculty_activity(user, activity_type):
 
 def calculate_user_streak(user):
     """
-    Calculate current streak, longest streak, and
-    today's activity status from stored activity dates.
+    Calculate current streak, longest streak, and today's
+    activity status from stored activity dates.
 
     Consecutive calendar days count toward a streak.
     Multiple activities on one date count as one day.
@@ -136,14 +116,12 @@ def calculate_user_streak(user):
     previous_date = None
 
     for activity_date in activity_dates:
-
         if (
             previous_date is not None
             and activity_date
             == previous_date + timedelta(days=1)
         ):
             running_streak += 1
-
         else:
             running_streak = 1
 
@@ -163,7 +141,6 @@ def calculate_user_streak(user):
         and last_activity_date
         >= today - timedelta(days=1)
     ):
-
         current_date = last_activity_date
 
         while current_date in date_set:
@@ -200,7 +177,8 @@ class UserStreakView(APIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
-
+        # Use the shared role function so superusers are
+        # consistently recognized as administrators.
         role = get_user_role(request.user)
 
         streak_data = calculate_user_streak(
@@ -214,3 +192,4 @@ class UserStreakView(APIView):
                 **streak_data,
             }
         )
+```
