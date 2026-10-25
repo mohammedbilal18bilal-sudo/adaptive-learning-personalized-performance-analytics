@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from "react";
 import API_BASE_URL from "../services/api";
 import "./LearningPages.css";
+import "./ProblemSolving.css";
 const listOf = d => Array.isArray(d) ? d : Array.isArray(d?.results) ? d.results : [];
 const fields = [
  ["goal_answer","Problem goal","What exact result is the problem asking for?"],
@@ -24,6 +25,45 @@ export default function ProblemSolving() {
  const open=(p)=>{setSelected(p);setResult(null);setError("");setAnswers({});setSteps(["","",""]);};
  const submit=async(e)=>{e.preventDefault();if(!selected)return;setSaving(true);setError("");try{const payload={problem:selected.id,...answers,logic_steps:steps.map(s=>s.trim()).filter(Boolean)};const res=await fetch(`${root}/attempts/`,{method:"POST",headers:headers(),body:JSON.stringify(payload)});const data=await res.json().catch(()=>({}));if(!res.ok)throw Error(data.detail||`Submission failed (HTTP ${res.status}).`);setResult(data);await load();}catch(e){setError(e.message||"Could not save this attempt.");}finally{setSaving(false);}};
  const skillNames={goal:"Goal",inputs:"Inputs",outputs:"Outputs",constraints:"Constraints",decomposition:"Breakdown",pattern:"Pattern",state:"State",decision:"Decision",verification:"Verification",transfer:"Transfer",logical_sequencing:"Logic steps"};
+ if (selected) {
+   const detailItems = [
+     ["Input", selected.input_description], ["Expected output", selected.output_description],
+     ["Constraints", selected.constraints], ["Goal hint", selected.goal_hint],
+     ["Decomposition hint", selected.decomposition_hint], ["State hint", selected.state_hint],
+     ["Decision hint", selected.decision_hint], ["Verification hint", selected.verification_hint],
+     ["Transfer problem", selected.transfer_problem]
+   ].filter(item => item[1]);
+   return <main className="ps-fullscreen">
+     <header className="ps-topbar">
+       <button type="button" className="ps-top-link" onClick={()=>{setSelected(null);setResult(null);}}>← All problems</button>
+       <div className="ps-top-title"><span>LEARNSMART / PROBLEM SOLVING</span><strong>{selected.title}</strong></div>
+       <div className="ps-top-actions"><span className="ps-difficulty-pill">Difficulty {selected.difficulty}</span><button type="button" className="ps-tool-button" onClick={load} disabled={loading}>↻ Refresh</button></div>
+     </header>
+     {error && <div className="ps-work-error" role="alert">{error}</div>}
+     <div className="ps-workspace">
+       <aside className="ps-problem-pane">
+         <div className="ps-pane-tabs"><span className="active">Statement</span><span>Hints & details</span></div>
+         <div className="ps-problem-content">
+           <div className="ps-kicker">{selected.pattern || "Reasoning practice"}</div>
+           <h1>{selected.title}</h1>
+           <p className="ps-statement">{selected.statement}</p>
+           {detailItems.map(([label,value])=><section className="ps-detail-block" key={label}><h3>{label}</h3><p>{value}</p></section>)}
+           {!detailItems.length && <p className="ps-muted">No extra statement details were supplied by the backend for this problem.</p>}
+         </div>
+       </aside>
+       <section className="ps-solution-pane">
+         <div className="ps-editor-toolbar"><div><span className="ps-live-dot"/> <strong>Solution workspace</strong><small>Saved to your authenticated profile when submitted</small></div><span className="ps-language-tag">Reasoning response</span></div>
+         <form className="ps-solution-form" onSubmit={submit}>
+           <p className="ps-form-note">Explain your approach in the fields below. Your response is evaluated by the backend's configured rubric; this page does not execute source code.</p>
+           <div className="ps-answer-fields">{fields.map(([key,label,hint])=><label className="ps-work-field" key={key}><span>{label}</span><small>{hint}</small>{key==="pattern_answer"?<input value={answers[key]||""} onChange={e=>setAnswers(a=>({...a,[key]:e.target.value}))} placeholder="Describe the pattern…"/>:<textarea rows={key==="decomposition_answer"||key==="verification_answer"?4:3} value={answers[key]||""} onChange={e=>setAnswers(a=>({...a,[key]:e.target.value}))} placeholder={`Write your ${label.toLowerCase()}…`}/>}</label>)}</div>
+           <section className="ps-logic-editor"><div className="ps-logic-title"><div><h3>Ordered logic steps</h3><p>List your algorithm steps in execution order.</p></div><button type="button" className="ps-tool-button" onClick={()=>setSteps(old=>[...old,""])}>+ Add step</button></div>{steps.map((step,i)=><div className="ps-code-step" key={i}><span>{String(i+1).padStart(2,"0")}</span><input value={step} onChange={e=>setSteps(old=>old.map((x,j)=>j===i?e.target.value:x))} placeholder={`Step ${i+1}`} /><button type="button" disabled={steps.length<=3} onClick={()=>setSteps(old=>old.filter((_,j)=>j!==i))} aria-label={`Remove step ${i+1}`}>×</button></div>)}</section>
+           {result && <section className="ps-submission-result"><span>SUBMISSION SAVED · #{result.id}</span><h2>Backend score: {result.total_score}/10</h2><div className="ps-result-chips">{Object.entries(result.scores||{}).map(([key,value])=><span key={key}>{skillNames[key]||key}: <strong>{value}/10</strong></span>)}</div><h3>Feedback</h3>{(result.feedback||[]).length?<ul>{result.feedback.map((f,i)=><li key={i}><strong>{skillNames[f.skill]||f.skill}:</strong> {f.message}</li>)}</ul>:<p>Submission received by backend.</p>}</section>}
+           <footer className="ps-submit-bar"><span>Changes are not saved until you submit.</span><button type="button" className="ps-tool-button" onClick={()=>{setSelected(null);setResult(null);}}>Cancel</button><button type="submit" className="ps-submit-button" disabled={saving}>{saving?"Submitting…":"Submit solution →"}</button></footer>
+         </form>
+       </section>
+     </div>
+   </main>;
+ }
  return <main className="lp-page"><header className="lp-header"><div><div className="lp-kicker">THINK · BREAK DOWN · VERIFY</div><h1>Problem Solving</h1><p>Problems, submissions, feedback and your reasoning profile are loaded from the authenticated backend.</p></div><button className="lp-button lp-secondary" onClick={load} disabled={loading}>↻ Refresh</button></header>
  {error&&<div className="lp-alert lp-error">{error}</div>}
  <div className="lp-summary"><div><strong>{problems.length}</strong><span>Available problems</span></div><div><strong>{attempts.length}</strong><span>Saved attempts</span></div><div><strong>{profile?.attempt_count ?? 0}</strong><span>Profile attempts</span></div></div>

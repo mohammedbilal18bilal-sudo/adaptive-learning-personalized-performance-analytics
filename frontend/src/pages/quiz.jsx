@@ -8,6 +8,9 @@ function Quiz({ assessment, onBack }) {
 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [submitting, setSubmitting] = useState(false);
+  const [submissionError, setSubmissionError] = useState("");
+  const [submissionResult, setSubmissionResult] = useState(null);
 
   const token = localStorage.getItem("accessToken");
 
@@ -177,6 +180,7 @@ function Quiz({ assessment, onBack }) {
    */
 
   const selectAnswer = (optionKey) => {
+    setSubmissionError("");
     if (!question) {
       return;
     }
@@ -225,6 +229,62 @@ function Quiz({ assessment, onBack }) {
         top: 0,
         behavior: "smooth",
       });
+    }
+  };
+
+  /*
+   * Submit selected answers to the authenticated Django endpoint.
+   * Backend contract: POST /api/attempts/
+   * { assessment: assessment.id, answers: { "<question id>": "A" } }
+   * The server calculates score/percentage and records streak activity.
+   */
+  const handleSubmitAssessment = async () => {
+    if (!assessment?.id || submitting || submissionResult) return;
+
+    if (!token) {
+      setSubmissionError("Your login session has expired. Please log in again.");
+      return;
+    }
+
+    if (Object.keys(answers).length === 0) {
+      setSubmissionError("Select at least one answer before submitting.");
+      return;
+    }
+
+    const unanswered = questions.length - Object.keys(answers).length;
+    if (unanswered > 0 && !window.confirm(
+      `You have ${unanswered} unanswered question(s). Submit your current answers anyway?`
+    )) return;
+
+    setSubmitting(true);
+    setSubmissionError("");
+
+    try {
+      const response = await fetch(`${API_BASE_URL}/attempts/`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          assessment: assessment.id,
+          answers,
+        }),
+      });
+
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        const message = data.error || data.detail ||
+          (typeof data === "object" ? Object.values(data).flat().join(" ") : "");
+        throw new Error(message || `Assessment submission failed (HTTP ${response.status}).`);
+      }
+
+      setSubmissionResult(data);
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    } catch (submitError) {
+      setSubmissionError(submitError.message || "Could not submit assessment. Please try again.");
+    } finally {
+      setSubmitting(false);
     }
   };
 
@@ -461,6 +521,31 @@ function Quiz({ assessment, onBack }) {
    * QUIZ
    * ---------------------------------------------------------
    */
+
+  if (submissionResult) {
+    return (
+      <div style={{ minHeight: "100vh", background: "#f6f7fb", padding: "36px 18px", fontFamily: "Arial, Helvetica, sans-serif", color: "#20213b" }}>
+        <section style={{ maxWidth: "760px", margin: "0 auto", background: "#fff", border: "1px solid #e7e7f0", borderRadius: "22px", padding: "clamp(24px, 5vw, 44px)", boxShadow: "0 15px 40px rgba(0,0,0,.06)" }}>
+          <div style={{ fontSize: "42px", marginBottom: "12px" }}>✓</div>
+          <p style={{ color: "#16845b", fontWeight: 800, letterSpacing: ".12em", fontSize: "11px" }}>ASSESSMENT SUBMITTED</p>
+          <h1 style={{ margin: "0 0 10px" }}>{assessment?.title || "Assessment"} — Result</h1>
+          <p style={{ color: "#73768b", lineHeight: 1.6 }}>Your attempt was saved by the backend.</p>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(150px,1fr))", gap: "14px", margin: "24px 0" }}>
+            <div style={{ background: "#f2f0ff", borderRadius: "14px", padding: "20px" }}>
+              <div style={{ color: "#74728f", fontSize: "12px" }}>Score</div>
+              <strong style={{ display: "block", fontSize: "30px", marginTop: "6px" }}>{submissionResult.score ?? "—"} / {assessment?.total_marks ?? "—"}</strong>
+            </div>
+            <div style={{ background: "#edf8f0", borderRadius: "14px", padding: "20px" }}>
+              <div style={{ color: "#5d7c68", fontSize: "12px" }}>Percentage</div>
+              <strong style={{ display: "block", fontSize: "30px", marginTop: "6px" }}>{submissionResult.percentage == null ? "—" : `${submissionResult.percentage}%`}</strong>
+            </div>
+          </div>
+          {submissionResult.submitted_at && <p style={{ color: "#73768b", fontSize: "13px" }}>Submitted: {new Date(submissionResult.submitted_at).toLocaleString()}</p>}
+          <button onClick={onBack} style={{ border: 0, borderRadius: "12px", padding: "13px 22px", background: "linear-gradient(135deg, #5d51df, #7669ed)", color: "#fff", fontWeight: 700, cursor: "pointer", marginTop: "12px" }}>Back to assessment</button>
+        </section>
+      </div>
+    );
+  }
 
   const selectedAnswer =
     answers[question.id];
@@ -909,24 +994,31 @@ function Quiz({ assessment, onBack }) {
               </button>
             ) : (
               <button
-                disabled
+                onClick={handleSubmitAssessment}
+                disabled={submitting || Object.keys(answers).length === 0}
                 style={{
                   border: "none",
-                  background: "#cfcfe0",
+                  background: submitting || Object.keys(answers).length === 0
+                    ? "#cfcfe0"
+                    : "linear-gradient(135deg, #16845b, #249764)",
                   color: "white",
-                  padding:
-                    "13px 25px",
+                  padding: "13px 25px",
                   borderRadius: "12px",
-                  cursor: "not-allowed",
+                  cursor: submitting || Object.keys(answers).length === 0 ? "not-allowed" : "pointer",
                   fontWeight: "700",
                 }}
-                title="Submission will be connected after the backend attempt format is confirmed."
               >
-                Finish
+                {submitting ? "Submitting…" : "Submit Assessment"}
               </button>
             )}
           </div>
         </section>
+
+        {submissionError && (
+          <div role="alert" style={{ marginTop: "16px", padding: "14px 16px", borderRadius: "12px", border: "1px solid #f1c7c4", background: "#fff1f0", color: "#9b2823", lineHeight: 1.5 }}>
+            {submissionError}
+          </div>
+        )}
 
         {/* =================================================
             QUESTION INDICATORS
