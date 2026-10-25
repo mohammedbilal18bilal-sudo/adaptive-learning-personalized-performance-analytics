@@ -1,6 +1,9 @@
 import React, { useEffect, useMemo, useState } from "react";
 import API_BASE_URL from "../services/api";
 import Quiz from "./quiz";
+import Lessons from "./Lessons";
+import ProblemSolving from "./ProblemSolving";
+import Streaks from "./Streaks";
 
 function Dashboard({ onLogout }) {
   const [activeSection, setActiveSection] = useState("dashboard");
@@ -1825,6 +1828,30 @@ function Dashboard({ onLogout }) {
           </button>
 
           <button
+            className={`ls-nav-button ${activeSection === "lessons" ? "active" : ""}`}
+            onClick={() => goToSection("lessons")}
+          >
+            <span className="ls-nav-icon">▤</span>
+            Lessons
+          </button>
+
+          <button
+            className={`ls-nav-button ${activeSection === "problem-solving" ? "active" : ""}`}
+            onClick={() => goToSection("problem-solving")}
+          >
+            <span className="ls-nav-icon">◇</span>
+            Problem Solving
+          </button>
+
+          <button
+            className={`ls-nav-button ${activeSection === "streaks" ? "active" : ""}`}
+            onClick={() => goToSection("streaks")}
+          >
+            <span className="ls-nav-icon">🔥</span>
+            Learning Streaks
+          </button>
+
+          <button
             className={`ls-nav-button ${
               activeSection === "progress"
                 ? "active"
@@ -1952,6 +1979,14 @@ function Dashboard({ onLogout }) {
           {/* =====================================================
               MAIN DASHBOARD
           ====================================================== */}
+
+          {activeSection === "lessons" && (
+            <Lessons onBack={() => goToSection("dashboard")} onOpenCourse={openCourse} />
+          )}
+
+          {activeSection === "problem-solving" && <ProblemSolving />}
+
+          {activeSection === "streaks" && <Streaks />}
 
           {activeSection === "dashboard" && (
 
@@ -2085,7 +2120,7 @@ function Dashboard({ onLogout }) {
 
               {/* DAILY LEARNING STREAK + 7-DAY MILESTONE GRAPH */}
               {streak ? (
-                <section className="ls-streak-card" aria-label="Learning streak">
+                <section className="ls-streak-card" aria-label="Learning streak" role="button" tabIndex={0} onClick={() => goToSection("streaks")} onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") goToSection("streaks"); }} style={{cursor:"pointer"}}>
                   <div>
                     <div className="ls-streak-heading">
                       <div className="ls-streak-flame" role="img" aria-label="Fire">
